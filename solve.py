@@ -50,31 +50,36 @@ class Solutions:
       if filter_str[0] == "~":
          return self.make_exclude_filter(filter_str[1:])
       filter_str = list(filter_str)
-      # Split the filter string into upper and all chars
-      all_chars = []
-      for i, c in enumerate(filter_str):
-         if c != "_":
-            if not c.isalpha():
-               raise ValueError(f"Invalid character in filter: {c}")
-            if c.islower():
-               filter_str[i]="_"
-            all_chars.append(c.upper())
             
-      def filter_func(s: str) -> bool:
+      def filter_func(maybe_sol: str) -> bool:
+         assert maybe_sol.isalpha(), f"Possible solution {maybe_sol} is not alphabetic"
+         assert maybe_sol.upper() == maybe_sol, f"Possible solution {maybe_sol} is not uppercase"
+         
+         # Clone the possible solution so that we can edit it
+         maybe_sol = list(maybe_sol)
+         
+         # Loop through known position characters (uppercase)
          for i, c in enumerate(filter_str):
-            if c != "_":
-               if c != s[i]:
+            if c != "_" and c.isupper():
+               if c != maybe_sol[i]:
+                  # A known position character is missing in the candidate
                   return False
-               if c in all_chars:
-                  all_chars.remove(c)
+               maybe_sol[i] = "_"
+               
+         # Loop through unknown position characters (lowercase)
+         for i, c in enumerate(filter_str):
+            if c != "_" and c.islower():
+               up_c = c.upper()
+               if up_c == maybe_sol[i]:
+                  # A character is present in an excluded position within the candidate
+                  return False
+               try:
+                  pos = maybe_sol.index(up_c)
+                  maybe_sol[pos] = "_"
+               except ValueError:
+                  # A character is missing from the candidate
+                  return False
 
-         for c in all_chars:
-            c_cnt = Solutions.count_chars(s, c)
-            s_cnt = Solutions.count_chars(all_chars, c)
-            if c_cnt != s_cnt:
-               if self.verbose:
-                  print(f"Discarding {s} because it does not have the right number {s_cnt} of {c}'s")
-               return False
          return True
       return filter_func
    
@@ -110,7 +115,20 @@ class Solutions:
       if len(exclude) > 0:
          exclude = ["~"] + sorted(set(exclude))
       return ("".join(hint), "".join(exclude))
-      
+   
+   def try_guess(self, guess: str):
+      results = []
+      for maybe_sol in self.filtered_sols:
+         hint, exclude = self.make_hint(guess, maybe_sol)
+         if hint==best_guess:
+            results.append((maybe_sol, hint, exclude, self.filtered_sols))
+            continue
+         clone = sols.clone()
+         clone.filter([hint, exclude])
+         results.append((maybe_sol, hint, exclude, clone.filtered_sols))
+         
+      return results
+                  
    def find_best_guess(self, solutions: list[str]) -> str:
       tot_sols = len(solutions)
       # Find the best guess by calculating the probabilities of guessing in each step
@@ -144,10 +162,10 @@ class Solutions:
          ("BAC__", ["BACON"]),
          ("_ALE", ['VALET', 'PALER', 'BALER', 'BALED', 'PALED']),
          ("_ALEb", ['BALER', 'BALED']),
-         ("alek", ['ALIKE', 'ANKLE', 'BLEAK', 'FLAKE', 'LEAKY', 'SLAKE', 'LATKE']),
-         ("_alek", ['ALIKE', 'ANKLE', 'BLEAK', 'FLAKE', 'LEAKY', 'SLAKE', 'LATKE']),
-         ("_kela", ['ALIKE', 'ANKLE', 'BLEAK', 'FLAKE', 'LEAKY', 'SLAKE', 'LATKE']),
-         ("Alek", ['ALIKE', 'ANKLE']),
+         ("alek", []),
+         ("_alek", ['ALIKE', 'ANKLE', 'FLAKE', 'LEAKY', 'SLAKE']),
+         ("_kela", ['ALIKE', 'FLAKE', 'LEAKY', 'SLAKE', 'LATKE']),
+         ("Alek", ['ANKLE']),
       ]
       for filt, expected in test_cases:
          self.filtered_sols = self.all_solutions.copy()
@@ -186,12 +204,9 @@ if __name__ == "__main__":
       best_guess = sols.find_best_guess(sols.filtered_sols)
       print(f"Best Guess: {best_guess}")
       
-      if len(sols) < 30:
-         for s in sols.filtered_sols:
-            hint, exclude = sols.make_hint(best_guess, s)
+      if len(sols) < 31:
+         for s, hint, exclude, remaining in sols.try_guess(best_guess):
             if hint==best_guess:
                print(f"   Solution: {s} Hint: {hint} SUCCESS")
                continue
-            clone = sols.clone()
-            clone.filter([hint, exclude])
-            print(f"   Solution: {s} Hint: {hint} Exclude: '{exclude}' {len(clone.filtered_sols)} remaining solutions {clone.filtered_sols}")
+            print(f"   Solution: {s} Hint: {hint} Exclude: '{exclude}' {len(remaining)} remaining solutions {remaining}")
