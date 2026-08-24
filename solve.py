@@ -43,6 +43,24 @@ class GuessSet:
       elif self.is_in_tot_sol_set:
          guess_type = "" 
       return f"{self.guess_str}{guess_type}"
+   
+   def is_better_than(self, other: "GuessSet") -> bool:
+      if self.remaining_cnt < other.remaining_cnt:
+         return True
+      elif self.guess_str != other.guess_str:
+         if self.remaining_cnt == other.remaining_cnt:
+            print(f"   Guess {self.to_str()} TIED with {other.to_str()}")
+
+            # Prefer guesses from the remaining solutions when two guesses have the same score
+            if self.is_in_remaining_sol_set:
+               if not other.is_in_remaining_sol_set:
+                  return True
+               
+            # Prefer guesses from the solutions file when two guesses have the same score
+            if self.is_in_tot_sol_set:
+               if not other.is_in_tot_sol_set:
+                  return True
+      return False
 
 class Solutions:
    def __init__(self, solution_file_name: str, guesses_file_name: str = "", verbose: bool = False, quiet: bool = False):
@@ -260,16 +278,11 @@ class Solutions:
                print(f"[{percent_complete:.2f}% after {loop_done_time - start_time:.2f}s done in {time_remaining:.2f}s] Best guess {best_guess.to_str()}: expected solutions remaining {best_guess.remaining_avg:.2f} on average from {best_guess.remaining_cnt}/{tot_guesses}")
             last_time = loop_done_time
          elif guess_set.guess_str != best_guess.guess_str:
-            if guess_set.remaining_cnt == best_score:
-               print(f"   Guess {guess_set.to_str()} TIED with {best_guess.to_str()}")
-
-               # Prefer guesses from the remaining solutions when two guesses have the same score
-               if guess_set.guess_str in self.filtered_sols:
-                  if not best_guess.guess_str in self.filtered_sols:
-                     best_guess = guess_set
-                     if self.verbose >= 1:
-                        print(f"[{percent_complete:.2f}% after {loop_done_time - start_time:.2f}s done in {time_remaining:.2f}s] TIED guess {best_guess.to_str()}: expected solutions remaining {best_guess.remaining_avg:.2f} on average from {best_guess.remaining_cnt}/{tot_guesses}")
-                     last_time = loop_done_time
+            if guess_set.is_better_than(best_guess):
+               best_guess = guess_set
+               if self.verbose >= 1:
+                  print(f"[{percent_complete:.2f}% after {loop_done_time - start_time:.2f}s done in {time_remaining:.2f}s] TIED guess {best_guess.to_str()}: expected solutions remaining {best_guess.remaining_avg:.2f} on average from {best_guess.remaining_cnt}/{tot_guesses}")
+               last_time = loop_done_time
 
             if self.verbose >= 2:
                print(f"Guess {guess_str} score of {guess_set.remaining_avg:.2f} with {tot_guesses} solutions")
