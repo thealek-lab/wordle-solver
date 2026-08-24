@@ -11,16 +11,19 @@ UNKNOWN_CHAR = "_"
 EMPTY_FILTER = UNKNOWN_CHAR * 5
 
 class Guess:
-   def __init__(self, maybe_sol: str, hint: str, exclude: str, remaining_sol_list: list):
+   def __init__(self, maybe_sol: str, hint: str, exclude: str, remaining_sol_set: list):
       self.maybe_sol = maybe_sol
+      self.is_in_remaining_sol_set = maybe_sol in remaining_sol_set
       self.hint = hint
       self.exclude = exclude
-      self.remaining_sol_list = remaining_sol_list
-      self.remaining_cnt = len(remaining_sol_list)
+      self.remaining_sol_set = remaining_sol_set
+      self.remaining_cnt = len(remaining_sol_set)
 
 class GuessSet:
-   def __init__(self, guess_str: str, num_sols: int):
+   def __init__(self, guess_str: str, num_sols: int, is_in_tot_sol_set: bool, is_in_remaining_sol_set: bool):
       self.guess_str = guess_str
+      self.is_in_tot_sol_set = is_in_tot_sol_set
+      self.is_in_remaining_sol_set = is_in_remaining_sol_set
       self.guesses = []
       self.num_sols = num_sols
       self.remaining_cnt = sys.maxsize
@@ -30,8 +33,16 @@ class GuessSet:
       self.guesses.append(guess)
       if self.remaining_cnt == sys.maxsize:
          self.remaining_cnt = 0
-      self.remaining_cnt += len(guess.remaining_sol_list)
+      self.remaining_cnt += len(guess.remaining_sol_set)
       self.remaining_avg = self.remaining_cnt / self.num_sols
+      
+   def to_str(self) -> str:
+      guess_type = "*"
+      if self.is_in_remaining_sol_set:
+         guess_type = "+"
+      elif self.is_in_tot_sol_set:
+         guess_type = "" 
+      return f"{self.guess_str}{guess_type}"
 
 class Solutions:
    def __init__(self, solution_file_name: str, guesses_file_name: str = "", verbose: bool = False, quiet: bool = False):
@@ -66,13 +77,12 @@ class Solutions:
             raise ValueError(f"Duplicate guess in guesses file: {guesses_file_name}")
 
          all_guesses.extend(self.all_solutions.copy())
-         all_guesses = sorted(all_guesses)
 
       for sol in self.all_solutions:
          if not sol in all_guesses:
             raise ValueError(f"Missing solution {sol} in guesses file: {guesses_file_name}")
 
-      self.all_guesses = all_guesses
+      self.all_guesses = sorted(all_guesses)
 
    def __len__(self) -> int:
       return len(self.filtered_sols)
@@ -188,7 +198,7 @@ class Solutions:
 
       for maybe_sol, hint, exclude in hints:
          remaining = [] if hint == guess_str else partitions[(hint, exclude)]
-         guess_obj = Guess(maybe_sol, hint, exclude, remaining)
+         guess_obj = Guess(maybe_sol, hint, exclude, remaining, self.all_solutions)
          if self.verbose >= 2:
             print(f"Guess {guess_str} number remaining: {guess_obj.remaining_cnt} with solution {maybe_sol} hint {hint}")
          guess_set.add_guess(guess_obj)
@@ -236,23 +246,36 @@ class Solutions:
             partition_counts[key] = partition_counts.get(key, 0) + 1
 
          score = sum(count * count for count in partition_counts.values())
-         guess_set = GuessSet(guess_str, len(filtered_sols))
+         guess_set = GuessSet(guess_str, len(filtered_sols), guess_str in self.all_solutions, guess_str in self.filtered_sols)
          guess_set.remaining_cnt = score
          guess_set.remaining_avg = score / len(filtered_sols)
          percent_complete = 100.0*(i+1)/tot_guesses
          loop_done_time = time.perf_counter()
          time_remaining = (loop_done_time - start_time) * (tot_guesses - i - 1) / (i + 1)
+         
          if guess_set.remaining_cnt < best_score:
             best_score = guess_set.remaining_cnt
             best_guess = guess_set
             if self.verbose >= 1:
-               print(f"[{percent_complete:.2f}% after {loop_done_time - start_time:.2f}s done in {time_remaining:.2f}s] Best guess {best_guess.guess_str}: expected solutions remaining {best_guess.remaining_avg:.2f} on average from {best_guess.remaining_cnt}/{tot_guesses}")
+               print(f"[{percent_complete:.2f}% after {loop_done_time - start_time:.2f}s done in {time_remaining:.2f}s] Best guess {best_guess.to_str()}: expected solutions remaining {best_guess.remaining_avg:.2f} on average from {best_guess.remaining_cnt}/{tot_guesses}")
             last_time = loop_done_time
-         elif self.verbose >= 2:
-            print(f"Guess {guess_str} score of {guess_set.remaining_avg:.2f} with {tot_guesses} solutions")
-         elif self.verbose >= 1 and loop_done_time - last_time >= 5.0:
-            print(f"[{percent_complete:.2f}% after {loop_done_time - start_time:.2f}s done in {time_remaining:.2f}s] Best guess is still {best_guess.guess_str} {best_guess.remaining_avg:.2f} (last guess was {guess_str} {guess_set.remaining_avg:.2f})")
-            last_time = loop_done_time
+         elif guess_set.guess_str != best_guess.guess_str:
+            if guess_set.remaining_cnt == best_score:
+               print(f"   Guess {guess_set.to_str()} TIED with {best_guess.to_str()}")
+
+               # Prefer guesses from the remaining solutions when two guesses have the same score
+               if guess_set.guess_str in self.filtered_sols:
+                  if not best_guess.guess_str in self.filtered_sols:
+                     best_guess = guess_set
+                     if self.verbose >= 1:
+                        print(f"[{percent_complete:.2f}% after {loop_done_time - start_time:.2f}s done in {time_remaining:.2f}s] TIED guess {best_guess.to_str()}: expected solutions remaining {best_guess.remaining_avg:.2f} on average from {best_guess.remaining_cnt}/{tot_guesses}")
+                     last_time = loop_done_time
+
+            if self.verbose >= 2:
+               print(f"Guess {guess_str} score of {guess_set.remaining_avg:.2f} with {tot_guesses} solutions")
+            elif self.verbose >= 1 and loop_done_time - last_time >= 5.0:
+               print(f"[{percent_complete:.2f}% after {loop_done_time - start_time:.2f}s done in {time_remaining:.2f}s] Best guess is still {best_guess.to_str()} {best_guess.remaining_avg:.2f} (last guess was {guess_str} {guess_set.remaining_avg:.2f})")
+               last_time = loop_done_time
       return (best_guess, loop_done_time - start_time)
 
    def unit_tests(self):
@@ -321,7 +344,7 @@ if __name__ == "__main__":
 
          hint_obj = sols.try_guess(options.force_guess)
          best_guess = GuessSet(options.force_guess, num_sols)
-         print(f"Forced guess {best_guess.guess_str}: expected solutions remaining {hint_obj.remaining_avg:.2f} on average from {hint_obj.remaining_cnt}/{num_sols}")
+         print(f"Forced guess {best_guess.to_str()}: expected solutions remaining {hint_obj.remaining_avg:.2f} on average from {hint_obj.remaining_cnt}/{num_sols}")
       else:
          hint_obj = None
          if options.hint_best:
@@ -334,8 +357,8 @@ if __name__ == "__main__":
          best_guess, elapsed = sols.find_best_guess(sols.filtered_sols, hard_mode=options.hard_mode, hint_best=hint_obj, reverse=options.reverse)
          print(f"Time taken: {elapsed:.2f} seconds")
          if best_guess.guess_str not in sols.all_solutions:
-            print(f"WARNING: Best guess {best_guess.guess_str} is not in the solutions file!")
-         print(f"Best guess {best_guess.guess_str}: expected solutions remaining {best_guess.remaining_avg:.2f} on average from {best_guess.remaining_cnt}/{num_sols}")
+            print(f"WARNING: Best guess {best_guess.to_str()} is not in the solutions file!")
+         print(f"Best guess {best_guess.to_str()}: expected solutions remaining {best_guess.remaining_avg:.2f} on average from {best_guess.remaining_cnt}/{num_sols}")
 
       if sols.verbose >= 2 or len(sols) < 30:
          for guess_obj in sols.try_guess(best_guess.guess_str).guesses:
