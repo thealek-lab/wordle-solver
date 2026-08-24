@@ -129,12 +129,14 @@ class Solutions:
          
       return results
                   
-   def find_best_guess(self, solutions: list[str]) -> str:
+   def find_best_guess(self, solutions: list[str], hard_mode: bool = False) -> str:
       tot_sols = len(solutions)
       # Find the best guess by calculating the probabilities of guessing in each step
       best_guess = ""
       best_score = float('inf')
-      for guess in self.all_solutions:
+      # In hard mode, guesses must themselves satisfy all known clues.
+      guesses = solutions if hard_mode else self.all_solutions
+      for guess in guesses:
          score=0
          for s in solutions:
             hint, exclude = self.make_hint(guess, s)
@@ -178,6 +180,10 @@ if __name__ == "__main__":
    verbose = "--verbose" in sys.argv[1:]
    if verbose:
       sys.argv.remove("--verbose")
+
+   hard_mode = "--hard-mode" in sys.argv[1:]
+   if hard_mode:
+      sys.argv.remove("--hard-mode")
    
    if "--no-tests" in sys.argv[1:]:
       sys.argv.remove("--no-tests")
@@ -201,7 +207,7 @@ if __name__ == "__main__":
       if num_sols>0 and num_sols < 10:
          print(f"{sols.filtered_sols}")
          
-      best_guess = sols.find_best_guess(sols.filtered_sols)
+      best_guess = sols.find_best_guess(sols.filtered_sols, hard_mode=hard_mode)
       print(f"Best Guess: {best_guess}")
       
       if len(sols) < 31:
