@@ -65,7 +65,7 @@ class GuessSet:
 class Solutions:
    def __init__(self, solution_file_name: str, guesses_file_name: str = "", verbose: bool = False, quiet: bool = False):
       self.verbose = 2 if verbose else 0 if quiet else 1
-      self.all_solutions = []
+      all_solutions = []
       with open(solution_file_name) as f:
          for l in f:
             line = l.strip().split()
@@ -73,9 +73,12 @@ class Solutions:
                sol = line[0].upper()
                if len(sol) != 5:
                   raise ValueError(f"Invalid solution length: {sol}")
-               self.all_solutions.append(sol)
+               all_solutions.append(sol)
 
-      self.all_solutions = sorted(self.all_solutions)
+      if len(set(all_solutions)) != len(all_solutions):
+         raise ValueError(f"Duplicate guess in solutions file: {solution_file_name}")
+
+      self.all_solutions = sorted(all_solutions)
       self.filtered_sols = self.all_solutions.copy()
 
       if len(guesses_file_name) == 0:
@@ -204,7 +207,7 @@ class Solutions:
 
    def try_guess(self, guess_str: str, lowest_remaining_cnt: int = sys.maxsize) -> GuessSet:
 
-      guess_set = GuessSet(guess_str, len(self.filtered_sols))
+      guess_set = GuessSet(guess_str, len(self.filtered_sols), is_in_tot_sol_set=False, is_in_remaining_sol_set=False)
       partitions = {}
       hints = []
       for maybe_sol in self.filtered_sols:
@@ -216,7 +219,7 @@ class Solutions:
 
       for maybe_sol, hint, exclude in hints:
          remaining = [] if hint == guess_str else partitions[(hint, exclude)]
-         guess_obj = Guess(maybe_sol, hint, exclude, remaining, self.all_solutions)
+         guess_obj = Guess(maybe_sol, hint, exclude, remaining)
          if self.verbose >= 2:
             print(f"Guess {guess_str} number remaining: {guess_obj.remaining_cnt} with solution {maybe_sol} hint {hint}")
          guess_set.add_guess(guess_obj)
@@ -235,7 +238,7 @@ class Solutions:
       elif num_sols == 1:
          # Only one solution left, return it as the best guess
          guess_str = solutions[0]
-         guess_set = GuessSet(guess_str, 1)
+         guess_set = GuessSet(guess_str, 1, is_in_tot_sol_set=guess_str in self.all_solutions, is_in_remaining_sol_set=guess_str in self.filtered_sols)
          guess_set.remaining_cnt = 0
          guess_set.remaining_avg = 0.0
          return (guess_set, time.perf_counter() - start_time)
@@ -378,4 +381,4 @@ if __name__ == "__main__":
             if guess_obj.hint == best_guess.guess_str:
                print(f"   Solution: {guess_obj.maybe_sol} Hint: {guess_obj.hint} SUCCESS")
                continue
-            print(f"   Solution: {guess_obj.maybe_sol} Hint: {guess_obj.hint}{guess_obj.exclude} {guess_obj.remaining_cnt} remaining solutions {guess_obj.remaining_sol_list}")
+            print(f"   Solution: {guess_obj.maybe_sol} Hint: {guess_obj.hint}{guess_obj.exclude} {guess_obj.remaining_cnt} remaining solutions {guess_obj.remaining_sol_set}")
