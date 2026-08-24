@@ -167,13 +167,21 @@ class Solutions:
    def find_best_guess(self, solutions: list[str], hint_best: GuessSet = None, hard_mode: bool = False, reverse: bool = False) -> tuple[GuessSet, float]:
       start_time = time.perf_counter()
 
-      if len(solutions) == 0:
+      num_sols =  len(solutions)
+      if num_sols == 0:
          raise ValueError("No solutions left to guess from")
+      elif num_sols == 1:
+         # Only one solution left, return it as the best guess
+         guess_str = solutions[0]
+         guess_set = GuessSet(guess_str, 1)
+         guess_set.remaining_cnt = 0
+         guess_set.remaining_avg = 0.0
+         return (guess_set, time.perf_counter() - start_time)
 
       # In hard mode, guesses must themselves satisfy all known clues.
       guess_list = solutions if hard_mode else self.all_solutions
       tot_guesses = len(guess_list)
-      
+
       if reverse:
          guess_list = list(reversed(guess_list))
 
