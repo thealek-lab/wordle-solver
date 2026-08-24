@@ -25,6 +25,7 @@ class GuessSet:
       self.num_sols = num_sols
       self.remaining_cnt = 0
       self.remaining_avg = float('inf')
+      self.truncated = False
 
    def add_guess(self, guess: Guess):
       self.guesses.append(guess)
@@ -165,6 +166,7 @@ class Solutions:
 
          if guess_set.remaining_avg > lowest_remaining_cnt:
             # No need to continue if the score is already worse than the best score
+            guess_set.truncated = True
             break
       return guess_set
 
@@ -194,7 +196,7 @@ class Solutions:
          elif self.verbose >= 2:
             print(f"Guess {guess_str} score of {guess_set.remaining_avg:.2f} with {tot_guesses} solutions")
          elif self.verbose >= 1 and loop_done_time - last_time >= 5.0:
-            print(f"[{percent_complete:.2f}% after {loop_done_time - start_time:.2f}s done in {time_remaining:.2f}s] Best guess is still {best_guess.guess_str} {best_guess.remaining_avg:.2f} (last guess was {guess_str} {guess_set.remaining_avg:.2f})")
+            print(f"[{percent_complete:.2f}% after {loop_done_time - start_time:.2f}s done in {time_remaining:.2f}s] Best guess is still {best_guess.guess_str} {best_guess.remaining_avg:.2f} (last guess was {guess_str} {guess_set.remaining_avg:.2f}{"+" if guess_set.truncated else ""})")
             last_time = loop_done_time
       return (best_guess, loop_done_time - start_time)
 
