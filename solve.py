@@ -151,8 +151,6 @@ class Solutions:
       return ("".join(hint), "".join(exclude))
 
    def try_guess(self, guess_str: str, verbose: int = 1, lowest_remaining_cnt: int = sys.maxsize) -> GuessSet:
-      max_sols = len(self.all_solutions)
-      lowest_remaining_cnt = max_sols*max_sols if lowest_remaining_cnt == sys.maxsize else lowest_remaining_cnt
 
       guess_set = GuessSet(guess_str, len(self.filtered_sols))
       partitions = {}
@@ -176,7 +174,7 @@ class Solutions:
             break
       return guess_set
 
-   def find_best_guess(self, solutions: list[str], hint_best: GuessSet = None, hard_mode: bool = False) -> tuple[GuessSet, float]:
+   def find_best_guess(self, solutions: list[str], hint_best: GuessSet = None, hard_mode: bool = False, reverse: bool = False) -> tuple[GuessSet, float]:
       start_time = time.perf_counter()
 
       if len(solutions) == 0:
@@ -185,6 +183,9 @@ class Solutions:
       # In hard mode, guesses must themselves satisfy all known clues.
       guess_list = solutions if hard_mode else self.all_solutions
       tot_guesses = len(guess_list)
+      
+      if reverse:
+         guess_list = list(reversed(guess_list))
 
       # Count hint partitions directly instead of cloning and filtering the
       # solution set once for every possible hint.
@@ -256,6 +257,8 @@ if __name__ == "__main__":
                      default=False, help="only use guesses satisfying known clues")
    parser.add_option("--no-tests", action="store_true", dest="no_tests",
                      default=False, help="skip unit tests")
+   parser.add_option("-r", "--reverse", action="store_true", dest="reverse",
+                     default=False, help="search in reverse order")
    options, args = parser.parse_args()
 
    if not options.no_tests:
@@ -293,7 +296,7 @@ if __name__ == "__main__":
             hint_obj = sols.try_guess(options.hint_best)
             print(f"Hinted best guess {options.hint_best}: expected solutions remaining {hint_obj.remaining_avg:.2f} on average from {hint_obj.remaining_cnt}/{num_sols}")
 
-         best_guess, elapsed = sols.find_best_guess(sols.filtered_sols, hard_mode=options.hard_mode, hint_best=hint_obj)
+         best_guess, elapsed = sols.find_best_guess(sols.filtered_sols, hard_mode=options.hard_mode, hint_best=hint_obj, reverse=options.reverse)
          print(f"Time taken: {elapsed:.2f} seconds")
          print(f"Best guess {best_guess.guess_str}: expected solutions remaining {best_guess.remaining_avg:.2f} on average from {best_guess.remaining_cnt}/{num_sols}")
 
