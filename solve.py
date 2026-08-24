@@ -2,14 +2,15 @@
 
 import os
 import sys
+from optparse import OptionParser
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 EXCLUSION_CHAR = "^"
 UNKNOWN_CHAR = "_"
 
 class Solutions:
-   def __init__(self, solution_file_name: str, verbose: bool = False):
-      self.verbose = verbose
+   def __init__(self, solution_file_name: str, verbose: bool = False, very_verbose: bool = False):
+      self.verbose = 1 if verbose else 2 if very_verbose else 0
       self.all_solutions = []
       with open(solution_file_name) as f:
          for l in f:
@@ -42,7 +43,7 @@ class Solutions:
       def filter_func(s: str) -> bool:
          for c in exclude_str.upper():
             if c in s:
-               if self.verbose:
+               if self.verbose > 1:
                   print(f"Discarding {s} because it contains excluded character {c}")
                return False
          return True
@@ -166,8 +167,9 @@ class Solutions:
          if score < best_score:
             best_score = score
             best_guess = guess
-            print(f"Best guess {guess} with expected solutions remaining {score/tot_sols:.2f} on average")
-         elif self.verbose:
+            if self.verbose > 0:
+               print(f"Best guess {guess} with expected solutions remaining {score/tot_sols:.2f} on average")
+         elif self.verbose > 1:
             print(f"Guess {guess} score of {score} with {tot_sols} solutions")
       return best_guess
 
@@ -190,40 +192,40 @@ class Solutions:
 if __name__ == "__main__":
    os.chdir(SCRIPT_DIR)
 
-   verbose = "--verbose" in sys.argv[1:]
-   if verbose:
-      sys.argv.remove("--verbose")
+   parser = OptionParser(usage="%prog [options] <solution_file> [filters ...]")
+   parser.add_option("-v", "--verbose", action="store_true", dest="verbose",
+                     default=False, help="enable verbose output")
+   parser.add_option("-w", "--very-verbose", action="store_true", dest="very_verbose",
+                     default=False, help="enable very verbose output")
+   parser.add_option("--hard-mode", action="store_true", dest="hard_mode",
+                     default=False, help="only use guesses satisfying known clues")
+   parser.add_option("--no-tests", action="store_true", dest="no_tests",
+                     default=False, help="skip unit tests")
+   options, args = parser.parse_args()
 
-   hard_mode = "--hard-mode" in sys.argv[1:]
-   if hard_mode:
-      sys.argv.remove("--hard-mode")
-
-   if "--no-tests" in sys.argv[1:]:
-      sys.argv.remove("--no-tests")
-   else:
-      sols = Solutions("./solutions.txt", verbose=False)
+   if not options.no_tests:
+      sols = Solutions("./solutions.txt", verbose=False, very_verbose=False)
       sols.unit_tests()
 
-   if len(sys.argv) < 2:
-      print("Usage: solve.py <solution_file>")
-      sys.exit(1)
-   solution_file_name = sys.argv[1]
+   if len(args) < 1:
+      parser.error("a solution file is required")
+   solution_file_name = args[0]
 
-   sols = Solutions(solution_file_name, verbose=verbose)
+   sols = Solutions(solution_file_name, verbose=options.verbose, very_verbose=options.very_verbose)
    print(f"All Possible Solutions: {len(sols.all_solutions)}")
 
-   if len(sys.argv) > 2:
+   if len(args) > 1:
       # Apply the solution filters
-      sols.filter(sys.argv[2:])
+      sols.filter(args[1:])
       num_sols = len(sols)
       print(f"Filtered Solutions: {num_sols}")
       if num_sols>0 and num_sols < 10:
          print(f"{sols.filtered_sols}")
 
-      best_guess = sols.find_best_guess(sols.filtered_sols, hard_mode=hard_mode)
+      best_guess = sols.find_best_guess(sols.filtered_sols, hard_mode=options.hard_mode)
       print(f"Best Guess: {best_guess}")
 
-      if len(sols) < 31:
+      if sols.verbose > 1 or len(sols) < 31:
          for s, hint, exclude, remaining in sols.try_guess(best_guess):
             if hint==best_guess:
                print(f"   Solution: {s} Hint: {hint} SUCCESS")
