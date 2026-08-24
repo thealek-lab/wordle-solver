@@ -49,18 +49,8 @@ class Solutions:
       self.all_solutions = sorted(self.all_solutions)
       self.filtered_sols = self.all_solutions.copy()
 
-   def clone(self):
-      new_sols = Solutions.__new__(Solutions)
-      new_sols.verbose = self.verbose
-      new_sols.all_solutions = self.all_solutions.copy()
-      new_sols.filtered_sols = self.filtered_sols.copy()
-      return new_sols
-
    def __len__(self) -> int:
       return len(self.filtered_sols)
-
-   def count_chars(string: list, c: str) -> int:
-      return string.count(c.upper())
 
    def make_exclude_filter(self, exclude_str: str):
       assert exclude_str.isalpha(), f"Excluded characters {exclude_str} are not alphabetic"
@@ -150,7 +140,7 @@ class Solutions:
          exclude = [EXCLUSION_CHAR] + sorted(set(exclude))
       return ("".join(hint), "".join(exclude))
 
-   def try_guess(self, guess_str: str, verbose: int = 1, lowest_remaining_cnt: int = sys.maxsize) -> GuessSet:
+   def try_guess(self, guess_str: str, lowest_remaining_cnt: int = sys.maxsize) -> GuessSet:
 
       guess_set = GuessSet(guess_str, len(self.filtered_sols))
       partitions = {}
@@ -301,7 +291,7 @@ if __name__ == "__main__":
          print(f"Best guess {best_guess.guess_str}: expected solutions remaining {best_guess.remaining_avg:.2f} on average from {best_guess.remaining_cnt}/{num_sols}")
 
       if sols.verbose >= 2 or len(sols) < 30:
-         for guess_obj in sols.try_guess(best_guess.guess_str, verbose=sols.verbose).guesses:
+         for guess_obj in sols.try_guess(best_guess.guess_str).guesses:
             if guess_obj.hint == best_guess.guess_str:
                print(f"   Solution: {guess_obj.maybe_sol} Hint: {guess_obj.hint} SUCCESS")
                continue
