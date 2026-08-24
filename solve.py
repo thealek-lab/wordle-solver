@@ -25,7 +25,6 @@ class GuessSet:
       self.num_sols = num_sols
       self.remaining_cnt = sys.maxsize
       self.remaining_avg = float('inf')
-      self.truncated = False
 
    def add_guess(self, guess: Guess):
       self.guesses.append(guess)
@@ -156,22 +155,24 @@ class Solutions:
       lowest_remaining_cnt = max_sols*max_sols if lowest_remaining_cnt == sys.maxsize else lowest_remaining_cnt
 
       guess_set = GuessSet(guess_str, len(self.filtered_sols))
+      partitions = {}
+      hints = []
       for maybe_sol in self.filtered_sols:
          hint, exclude = self.make_hint(guess_str, maybe_sol)
-         if hint==guess_str:
-            guess_set.add_guess(Guess(maybe_sol, hint, exclude, []))
-            continue
-         clone = sols.clone()
-         clone.filter([hint, exclude])
-         guess_obj = Guess(maybe_sol, hint, exclude, clone.filtered_sols)
+         if hint != guess_str:
+            key = (hint, exclude)
+            partitions.setdefault(key, []).append(maybe_sol)
+         hints.append((maybe_sol, hint, exclude))
 
+      for maybe_sol, hint, exclude in hints:
+         remaining = [] if hint == guess_str else partitions[(hint, exclude)]
+         guess_obj = Guess(maybe_sol, hint, exclude, remaining)
          if self.verbose >= 2:
             print(f"Guess {guess_str} number remaining: {guess_obj.remaining_cnt} with solution {maybe_sol} hint {hint}")
          guess_set.add_guess(guess_obj)
 
          if guess_set.remaining_cnt > lowest_remaining_cnt:
             # No need to continue if the score is already worse than the best score
-            guess_set.truncated = True
             break
       return guess_set
 
@@ -212,12 +213,12 @@ class Solutions:
             best_score = guess_set.remaining_cnt
             best_guess = guess_set
             if self.verbose >= 1:
-               print(f"[{percent_complete:.2f}% after {loop_done_time - start_time:.2f}s done in {time_remaining:.2f}s] Best guess {best_guess.guess_str} with expected solutions remaining {best_guess.remaining_avg:.2f} on average")
+               print(f"[{percent_complete:.2f}% after {loop_done_time - start_time:.2f}s done in {time_remaining:.2f}s] Best guess {best_guess.guess_str}: expected solutions remaining {best_guess.remaining_avg:.2f} on average from {best_guess.remaining_cnt}/{tot_guesses}")
             last_time = loop_done_time
          elif self.verbose >= 2:
             print(f"Guess {guess_str} score of {guess_set.remaining_avg:.2f} with {tot_guesses} solutions")
          elif self.verbose >= 1 and loop_done_time - last_time >= 5.0:
-            print(f"[{percent_complete:.2f}% after {loop_done_time - start_time:.2f}s done in {time_remaining:.2f}s] Best guess is still {best_guess.guess_str} {best_guess.remaining_avg:.2f} (last guess was {guess_str} {guess_set.remaining_avg:.2f}{"+" if guess_set.truncated else ""})")
+            print(f"[{percent_complete:.2f}% after {loop_done_time - start_time:.2f}s done in {time_remaining:.2f}s] Best guess is still {best_guess.guess_str} {best_guess.remaining_avg:.2f} (last guess was {guess_str} {guess_set.remaining_avg:.2f})")
             last_time = loop_done_time
       return (best_guess, loop_done_time - start_time)
 
@@ -282,7 +283,7 @@ if __name__ == "__main__":
 
          hint_obj = sols.try_guess(options.force_guess)
          best_guess = GuessSet(options.force_guess, num_sols)
-         print(f"Forced guess {best_guess.guess_str} with expected solutions remaining {hint_obj.remaining_avg:.2f} on average from {hint_obj.remaining_cnt}/{num_sols}")
+         print(f"Forced guess {best_guess.guess_str}:expected solutions remaining {hint_obj.remaining_avg:.2f} on average from {hint_obj.remaining_cnt}/{num_sols}")
       else:
          hint_obj = None
          if options.hint_best:
@@ -290,12 +291,11 @@ if __name__ == "__main__":
                print(f"WARNING: Hint best guess {options.hint_best} is not in the filtered solutions!")
 
             hint_obj = sols.try_guess(options.hint_best)
-            assert not hint_obj.truncated, f"Hint best guess {options.hint_best} was truncated after {hint_obj.remaining_cnt}/{num_sols}!"
-            print(f"Hinted best guess {options.hint_best} with expected solutions remaining {hint_obj.remaining_avg:.2f} on average from {hint_obj.remaining_cnt}/{num_sols}")
+            print(f"Hinted best guess {options.hint_best}: expected solutions remaining {hint_obj.remaining_avg:.2f} on average from {hint_obj.remaining_cnt}/{num_sols}")
 
          best_guess, elapsed = sols.find_best_guess(sols.filtered_sols, hard_mode=options.hard_mode, hint_best=hint_obj)
          print(f"Time taken: {elapsed:.2f} seconds")
-         print(f"Best guess {best_guess.guess_str} with expected solutions remaining {best_guess.remaining_avg:.2f} on average")
+         print(f"Best guess {best_guess.guess_str}: expected solutions remaining {best_guess.remaining_avg:.2f} on average from {best_guess.remaining_cnt}/{num_sols}")
 
       if sols.verbose >= 2 or len(sols) < 30:
          for guess_obj in sols.try_guess(best_guess.guess_str, verbose=sols.verbose).guesses:
