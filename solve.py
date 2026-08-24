@@ -2,6 +2,7 @@
 
 import os
 import sys
+import time
 from optparse import OptionParser
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -139,6 +140,7 @@ class Solutions:
       return results
 
    def find_best_guess(self, solutions: list[str], hard_mode: bool = False):
+      start_time = time.perf_counter()
       tot_sols = len(solutions)
       if tot_sols == 0:
          raise ValueError("No solutions left to guess from")
@@ -163,6 +165,9 @@ class Solutions:
                # Bad guess with no solutions left, skip it
                continue
             score += len(clone.filtered_sols)
+            if score > best_score:
+               # No need to continue if the score is already worse than the best score
+               break
             #print(f"Guess {guess} score of {score} with solution {s} hint {hint}")
          if score < best_score:
             best_score = score
@@ -171,7 +176,7 @@ class Solutions:
                print(f"Best guess {guess} with expected solutions remaining {score/tot_sols:.2f} on average")
          elif self.verbose >= 2:
             print(f"Guess {guess} score of {score} with {tot_sols} solutions")
-      return (best_guess, best_score/tot_sols)
+      return (best_guess, best_score/tot_sols, time.perf_counter() - start_time)
 
    def unit_tests(self):
       # Test the filter function
@@ -220,7 +225,8 @@ if __name__ == "__main__":
       if num_sols > 0 and (sols.verbose >= 2 or num_sols <= 10):
          print(f"{sols.filtered_sols}")
 
-      best_guess, best_score = sols.find_best_guess(sols.filtered_sols, hard_mode=options.hard_mode)
+      best_guess, best_score, elapsed = sols.find_best_guess(sols.filtered_sols, hard_mode=options.hard_mode)
+      print(f"Time taken: {elapsed:.2f} seconds")
       if sols.verbose != 1:
          print(f"Best guess {best_guess} with expected solutions remaining {best_score:.2f} on average")
 
