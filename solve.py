@@ -139,11 +139,16 @@ class Solutions:
 
    def find_best_guess(self, solutions: list[str], hard_mode: bool = False) -> str:
       tot_sols = len(solutions)
-      # Find the best guess by calculating the probabilities of guessing in each step
+      if tot_sols == 0:
+         raise ValueError("No solutions left to guess from")
+      
+      # Find the best guess by calculating the expected number of remaining solutions for each guess
       best_guess = ""
       best_score = float('inf')
+      
       # In hard mode, guesses must themselves satisfy all known clues.
       guesses = solutions if hard_mode else self.all_solutions
+      
       for guess in guesses:
          score=0
          for s in solutions:
@@ -161,9 +166,9 @@ class Solutions:
          if score < best_score:
             best_score = score
             best_guess = guess
-            print(f"Best guess {guess} with expected solutions remaining {score/len(solutions):.2f} on average")
+            print(f"Best guess {guess} with expected solutions remaining {score/tot_sols:.2f} on average")
          elif self.verbose:
-            print(f"Guess {guess} score of {score} with {len(solutions)} solutions")
+            print(f"Guess {guess} score of {score} with {tot_sols} solutions")
       return best_guess
 
    def unit_tests(self):
