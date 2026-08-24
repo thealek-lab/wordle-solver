@@ -23,12 +23,14 @@ class GuessSet:
       self.guess_str = guess_str
       self.guesses = []
       self.num_sols = num_sols
-      self.remaining_cnt = 0
+      self.remaining_cnt = sys.maxsize
       self.remaining_avg = float('inf')
       self.truncated = False
 
    def add_guess(self, guess: Guess):
       self.guesses.append(guess)
+      if self.remaining_cnt == sys.maxsize:
+         self.remaining_cnt = 0
       self.remaining_cnt += len(guess.remaining_sol_list)
       self.remaining_avg = self.remaining_cnt / self.num_sols
 
@@ -149,7 +151,9 @@ class Solutions:
          exclude = [EXCLUSION_CHAR] + sorted(set(exclude))
       return ("".join(hint), "".join(exclude))
 
-   def try_guess(self, guess_str: str, verbose: int = 1, lowest_remaining_cnt: float = float('inf')) -> GuessSet:
+   def try_guess(self, guess_str: str, verbose: int = 1, lowest_remaining_cnt: int = -1) -> GuessSet:
+      lowest_remaining_cnt = len(self.all_solutions) if lowest_remaining_cnt < 0 else lowest_remaining_cnt
+
       guess_set = GuessSet(guess_str, len(self.filtered_sols))
       for maybe_sol in self.filtered_sols:
          hint, exclude = self.make_hint(guess_str, maybe_sol)
@@ -164,7 +168,7 @@ class Solutions:
             print(f"Guess {guess_str} number remaining: {guess_obj.remaining_cnt} with solution {maybe_sol} hint {hint}")
          guess_set.add_guess(guess_obj)
 
-         if guess_set.remaining_avg > lowest_remaining_cnt:
+         if guess_set.remaining_cnt > lowest_remaining_cnt:
             # No need to continue if the score is already worse than the best score
             guess_set.truncated = True
             break
@@ -173,22 +177,23 @@ class Solutions:
    def find_best_guess(self, solutions: list[str], hint_best: GuessSet = None, hard_mode: bool = False) -> tuple[GuessSet, float]:
       start_time = time.perf_counter()
 
+      if len(solutions) == 0:
+         raise ValueError("No solutions left to guess from")
+
       # In hard mode, guesses must themselves satisfy all known clues.
       guess_list = solutions if hard_mode else self.all_solutions
       tot_guesses = len(guess_list)
-      if tot_guesses == 0:
-         raise ValueError("No solutions left to guess from")
 
       # Find the best guess by calculating the expected number of remaining solutions for each guess
       best_guess = hint_best if hint_best is not None else GuessSet(guess_list[0], num_sols=tot_guesses)
 
       last_time = start_time
       for i, guess_str in enumerate(guess_list):
-         guess_set = sols.try_guess(guess_str, verbose=self.verbose, lowest_remaining_cnt=best_guess.remaining_avg)
+         guess_set = sols.try_guess(guess_str, verbose=self.verbose, lowest_remaining_cnt=best_guess.remaining_cnt)
          percent_complete = 100.0*(i+1)/tot_guesses
          loop_done_time = time.perf_counter()
          time_remaining = (loop_done_time - start_time) * (tot_guesses - i - 1) / (i + 1)
-         if guess_set.remaining_avg < best_guess.remaining_avg:
+         if guess_set.remaining_cnt < best_guess.remaining_cnt:
             best_guess = guess_set
             if self.verbose >= 1:
                print(f"[{percent_complete:.2f}% after {loop_done_time - start_time:.2f}s done in {time_remaining:.2f}s] Best guess {best_guess.guess_str} with expected solutions remaining {best_guess.remaining_avg:.2f} on average")
