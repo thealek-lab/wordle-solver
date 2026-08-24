@@ -112,10 +112,19 @@ class Solutions:
          return True
       return filter_func
 
-   def filter(self, filter_list: list[str]):
-      for filt in filter_list:
-         filter_func = self.make_filter_func(filt)
-         self.filtered_sols = list(filter(filter_func, self.filtered_sols))
+   def filter(self, filter_str_list: list[str]):
+      filter_func_list = []
+      for filt_str in filter_str_list:
+         filt_split_list = filt_str.split(EXCLUSION_CHAR)
+         if len(filt_split_list) == 2:
+            filter_func_list.append(self.make_filter_func(filt_split_list[0]))
+            filter_func_list.append(self.make_filter_func(EXCLUSION_CHAR+filt_split_list[1]))
+         else:
+            filter_func_list.append(self.make_filter_func(filt_str))
+
+      for filt_func in filter_func_list:
+         self.filtered_sols = list(filter(filt_func, self.filtered_sols))
+
       self.filtered_sols = sorted(self.filtered_sols)
 
    def make_hint(self, guess: str, solution: str):
@@ -284,7 +293,7 @@ if __name__ == "__main__":
 
          hint_obj = sols.try_guess(options.force_guess)
          best_guess = GuessSet(options.force_guess, num_sols)
-         print(f"Forced guess {best_guess.guess_str}:expected solutions remaining {hint_obj.remaining_avg:.2f} on average from {hint_obj.remaining_cnt}/{num_sols}")
+         print(f"Forced guess {best_guess.guess_str}: expected solutions remaining {hint_obj.remaining_avg:.2f} on average from {hint_obj.remaining_cnt}/{num_sols}")
       else:
          hint_obj = None
          if options.hint_best:
