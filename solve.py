@@ -5,62 +5,10 @@ import sys
 import time
 from optparse import OptionParser
 
+from filter import Filter, EXCLUSION_CHAR
+from guess_set import Guess, GuessSet
+
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-EXCLUSION_CHAR = "^"
-UNKNOWN_CHAR = "_"
-EMPTY_FILTER = UNKNOWN_CHAR * 5
-
-class Guess:
-   def __init__(self, maybe_sol: str, hint: str, exclude: str, remaining_sol_set: list):
-      self.maybe_sol = maybe_sol
-      self.is_in_remaining_sol_set = maybe_sol in remaining_sol_set
-      self.hint = hint
-      self.exclude = exclude
-      self.remaining_sol_set = remaining_sol_set
-      self.remaining_cnt = len(remaining_sol_set)
-
-class GuessSet:
-   def __init__(self, guess_str: str, num_sols: int, is_in_tot_sol_set: bool, is_in_remaining_sol_set: bool):
-      self.guess_str = guess_str
-      self.is_in_tot_sol_set = is_in_tot_sol_set
-      self.is_in_remaining_sol_set = is_in_remaining_sol_set
-      self.guesses = []
-      self.num_sols = num_sols
-      self.remaining_cnt = sys.maxsize
-      self.remaining_avg = float('inf')
-
-   def add_guess(self, guess: Guess):
-      self.guesses.append(guess)
-      if self.remaining_cnt == sys.maxsize:
-         self.remaining_cnt = 0
-      self.remaining_cnt += len(guess.remaining_sol_set)
-      self.remaining_avg = self.remaining_cnt / self.num_sols
-      
-   def to_str(self) -> str:
-      guess_type = "*"
-      if self.is_in_remaining_sol_set:
-         guess_type = "+"
-      elif self.is_in_tot_sol_set:
-         guess_type = "" 
-      return f"{self.guess_str}{guess_type}"
-   
-   def is_better_than(self, other: "GuessSet") -> bool:
-      if self.remaining_cnt < other.remaining_cnt:
-         return True
-      elif self.guess_str != other.guess_str:
-         if self.remaining_cnt == other.remaining_cnt:
-            print(f"   Guess {self.to_str()} TIED with {other.to_str()}")
-
-            # Prefer guesses from the remaining solutions when two guesses have the same score
-            if self.is_in_remaining_sol_set:
-               if not other.is_in_remaining_sol_set:
-                  return True
-               
-            # Prefer guesses from the solutions file when two guesses have the same score
-            if self.is_in_tot_sol_set:
-               if not other.is_in_tot_sol_set:
-                  return True
-      return False
 
 class Solutions:
    def __init__(self, solution_file_name: str, guesses_file_name: str = "", verbose: bool = False, quiet: bool = False):
@@ -108,118 +56,38 @@ class Solutions:
    def __len__(self) -> int:
       return len(self.filtered_sols)
 
-   def make_exclude_filter(self, exclude_str: str):
-      assert exclude_str.isalpha(), f"Excluded characters {exclude_str} are not alphabetic"
-
-      def filter_func(s: str) -> bool:
-         for c in exclude_str.upper():
-            if c in s:
-               if self.verbose >= 3:
-                  print(f"Discarding {s} because it contains excluded character {c}")
-               return False
-         return True
-
-      return filter_func
-
-   def make_filter_func(self, filter_str: str):
-      if len(filter_str) == 0 or filter_str == EMPTY_FILTER:
-         # Empty filter string, accept all solutions
-         return lambda s: True
-
-      if filter_str[0] == EXCLUSION_CHAR:
-         return self.make_exclude_filter(filter_str[1:])
-
-      assert len(filter_str) <= 5, f"Filter string '{filter_str}' is more than 5 characters long"
-
-      stripped_filter = filter_str.replace(UNKNOWN_CHAR, "")
-      assert stripped_filter.isalpha(), f"Filter string '{filter_str}' is not alphabetic"
-
-      filter_str = list(filter_str)
-
-      def filter_func(maybe_sol: str) -> bool:
-         assert maybe_sol.isalpha(), f"Possible solution {maybe_sol} is not alphabetic"
-         assert maybe_sol.upper() == maybe_sol, f"Possible solution {maybe_sol} is not uppercase"
-
-         # Clone the possible solution so that we can edit it
-         maybe_sol = list(maybe_sol)
-
-         # Loop through known position characters (uppercase)
-         for i, c in enumerate(filter_str):
-            if c != UNKNOWN_CHAR and c.isupper():
-               if c != maybe_sol[i]:
-                  # A known position character is missing in the candidate
-                  return False
-               maybe_sol[i] = UNKNOWN_CHAR
-
-         # Loop through unknown position characters (lowercase)
-         for i, c in enumerate(filter_str):
-            if c != UNKNOWN_CHAR and c.islower():
-               up_c = c.upper()
-               if up_c == maybe_sol[i]:
-                  # A character is present in an excluded position within the candidate
-                  return False
-               try:
-                  pos = maybe_sol.index(up_c)
-                  maybe_sol[pos] = UNKNOWN_CHAR
-               except ValueError:
-                  # A character is missing from the candidate
-                  return False
-
-         return True
-      return filter_func
-
    def filter(self, filter_str_list: list[str]):
       filter_func_list = []
       for filt_str in filter_str_list:
          filt_split_list = filt_str.split(EXCLUSION_CHAR)
          if len(filt_split_list) == 2:
-            filter_func_list.append(self.make_filter_func(filt_split_list[0]))
-            filter_func_list.append(self.make_filter_func(EXCLUSION_CHAR+filt_split_list[1]))
+            filter_func_list.append(Filter.make_filter_func(filt_split_list[0]))
+            filter_func_list.append(Filter.make_filter_func(EXCLUSION_CHAR+filt_split_list[1]))
          else:
-            filter_func_list.append(self.make_filter_func(filt_str))
+            filter_func_list.append(Filter.make_filter_func(filt_str))
 
       for filt_func in filter_func_list:
          self.filtered_sols = list(filter(filt_func, self.filtered_sols))
 
       self.filtered_sols = sorted(self.filtered_sols)
 
-   def make_hint(self, guess: str, solution: str):
-      sol = list(solution)
-      # Make a hint based on the guess and the solution
-      hint = list(EMPTY_FILTER)
-      exclude = []
-      for i, c in enumerate(guess):
-         if c == sol[i]:
-            hint[i] = c.upper()
-            sol[i] = UNKNOWN_CHAR
-         else:
-            try:
-               pos = sol.index(c)
-            except ValueError:
-               if not c in solution:
-                  exclude.append(c)
-               continue
-            hint[i] = c.lower()
-            sol[pos] = UNKNOWN_CHAR
-      if len(exclude) > 0:
-         exclude = [EXCLUSION_CHAR] + sorted(set(exclude))
-      return ("".join(hint), "".join(exclude))
-
    def try_guess(self, guess_str: str, lowest_remaining_cnt: int = sys.maxsize) -> GuessSet:
 
-      guess_set = GuessSet(guess_str, len(self.filtered_sols), is_in_tot_sol_set=False, is_in_remaining_sol_set=False)
       partitions = {}
       hints = []
       for maybe_sol in self.filtered_sols:
-         hint, exclude = self.make_hint(guess_str, maybe_sol)
-         if hint != guess_str:
-            key = (hint, exclude)
-            partitions.setdefault(key, []).append(maybe_sol)
-         hints.append((maybe_sol, hint, exclude))
+         hint = Filter.make_hint(guess_str, maybe_sol)
+         if not hint.is_match(guess_str):
+            key = str(hint)
+            partitions.setdefault(key, [])
+            partitions[key].append(maybe_sol)
+         hints.append((maybe_sol, hint))
 
-      for maybe_sol, hint, exclude in hints:
-         remaining = [] if hint == guess_str else partitions[(hint, exclude)]
-         guess_obj = Guess(maybe_sol, hint, exclude, remaining)
+      guess_set = GuessSet(guess_str, len(self.filtered_sols), is_in_tot_sol_set=True, is_in_remaining_sol_set=False)
+      for maybe_sol, hint in hints:
+         key = str(hint)
+         remaining = [] if hint.is_match(guess_str) else partitions[key]
+         guess_obj = Guess(maybe_sol, hint, remaining)
          if self.verbose >= 2:
             print(f"Guess {guess_str} number remaining: {guess_obj.remaining_cnt} with solution {maybe_sol} hint {hint}")
          guess_set.add_guess(guess_obj)
@@ -260,11 +128,10 @@ class Solutions:
       for i, guess_str in enumerate(guess_list):
          partition_counts = {}
          for maybe_sol in filtered_sols:
-            hint, exclude = self.make_hint(guess_str, maybe_sol)
-            if hint == guess_str:
+            hint = Filter.make_hint(guess_str, maybe_sol)
+            if hint.is_match(guess_str):
                continue
-            key = (hint, exclude)
-            partition_counts[key] = partition_counts.get(key, 0) + 1
+            partition_counts[hint] = partition_counts.get(hint, 0) + 1
 
          score = sum(count * count for count in partition_counts.values())
          guess_set = GuessSet(guess_str, len(filtered_sols), guess_str in self.all_solutions, guess_str in self.filtered_sols)
@@ -359,7 +226,7 @@ if __name__ == "__main__":
             print(f"WARNING: Forced guess {options.force_guess} is not in the filtered solutions!")
 
          hint_obj = sols.try_guess(options.force_guess)
-         best_guess = GuessSet(options.force_guess, num_sols)
+         best_guess = GuessSet(options.force_guess, num_sols, is_in_tot_sol_set=options.force_guess in sols.all_solutions, is_in_remaining_sol_set=options.force_guess in sols.filtered_sols)
          print(f"Forced guess {best_guess.to_str()}: expected solutions remaining {hint_obj.remaining_avg:.2f} on average from {hint_obj.remaining_cnt}/{num_sols}")
       else:
          hint_obj = None
@@ -378,7 +245,7 @@ if __name__ == "__main__":
 
       if sols.verbose >= 2 or len(sols) < 30:
          for guess_obj in sols.try_guess(best_guess.guess_str).guesses:
-            if guess_obj.hint == best_guess.guess_str:
+            if guess_obj.hint.is_match(best_guess.guess_str):
                print(f"   Solution: {guess_obj.maybe_sol} Hint: {guess_obj.hint} SUCCESS")
                continue
-            print(f"   Solution: {guess_obj.maybe_sol} Hint: {guess_obj.hint}{guess_obj.exclude} {guess_obj.remaining_cnt} remaining solutions {guess_obj.remaining_sol_set}")
+            print(f"   Solution: {guess_obj.maybe_sol} Hint: {guess_obj.hint} {guess_obj.remaining_cnt} remaining solutions {guess_obj.remaining_sol_set}")
