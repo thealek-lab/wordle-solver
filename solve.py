@@ -185,16 +185,31 @@ class Solutions:
       guess_list = solutions if hard_mode else self.all_solutions
       tot_guesses = len(guess_list)
 
-      # Find the best guess by calculating the expected number of remaining solutions for each guess
-      best_guess = hint_best if hint_best is not None else GuessSet(guess_list[0], num_sols=tot_guesses)
+      # Count hint partitions directly instead of cloning and filtering the
+      # solution set once for every possible hint.
+      best_guess = hint_best
+      best_score = hint_best.remaining_cnt if hint_best is not None else sys.maxsize
+      filtered_sols = self.filtered_sols
 
       last_time = start_time
       for i, guess_str in enumerate(guess_list):
-         guess_set = sols.try_guess(guess_str, verbose=self.verbose, lowest_remaining_cnt=best_guess.remaining_cnt)
+         partition_counts = {}
+         for maybe_sol in filtered_sols:
+            hint, exclude = self.make_hint(guess_str, maybe_sol)
+            if hint == guess_str:
+               continue
+            key = (hint, exclude)
+            partition_counts[key] = partition_counts.get(key, 0) + 1
+
+         score = sum(count * count for count in partition_counts.values())
+         guess_set = GuessSet(guess_str, len(filtered_sols))
+         guess_set.remaining_cnt = score
+         guess_set.remaining_avg = score / len(filtered_sols)
          percent_complete = 100.0*(i+1)/tot_guesses
          loop_done_time = time.perf_counter()
          time_remaining = (loop_done_time - start_time) * (tot_guesses - i - 1) / (i + 1)
-         if guess_set.remaining_cnt < best_guess.remaining_cnt:
+         if guess_set.remaining_cnt < best_score:
+            best_score = guess_set.remaining_cnt
             best_guess = guess_set
             if self.verbose >= 1:
                print(f"[{percent_complete:.2f}% after {loop_done_time - start_time:.2f}s done in {time_remaining:.2f}s] Best guess {best_guess.guess_str} with expected solutions remaining {best_guess.remaining_avg:.2f} on average")
