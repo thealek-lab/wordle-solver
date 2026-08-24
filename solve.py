@@ -8,6 +8,7 @@ from optparse import OptionParser
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 EXCLUSION_CHAR = "^"
 UNKNOWN_CHAR = "_"
+EMPTY_FILTER = UNKNOWN_CHAR * 5
 
 class Guess:
    def __init__(self, maybe_sol: str, hint: str, exclude: str, remaining_sol_list: list):
@@ -73,7 +74,7 @@ class Solutions:
       return filter_func
 
    def make_filter_func(self, filter_str: str):
-      if len(filter_str) == 0 or filter_str == UNKNOWN_CHAR * 5:
+      if len(filter_str) == 0 or filter_str == EMPTY_FILTER:
          # Empty filter string, accept all solutions
          return lambda s: True
 
@@ -128,7 +129,7 @@ class Solutions:
    def make_hint(self, guess: str, solution: str):
       sol = list(solution)
       # Make a hint based on the guess and the solution
-      hint = [UNKNOWN_CHAR] * 5
+      hint = list(EMPTY_FILTER)
       exclude = []
       for i, c in enumerate(guess):
          if c == sol[i]:
@@ -242,7 +243,7 @@ if __name__ == "__main__":
 
    if options.hint_best and len(args) == 0:
       # Force search through the entire set of solutions if a hint best guess is provided but no filters are given
-      args.append("_____")
+      args.append(EMPTY_FILTER)
 
    if len(args) > 0:
       # Apply the solution filters
@@ -277,4 +278,4 @@ if __name__ == "__main__":
             if guess_obj.hint == best_guess.guess_str:
                print(f"   Solution: {guess_obj.maybe_sol} Hint: {guess_obj.hint} SUCCESS")
                continue
-            print(f"   Solution: {guess_obj.maybe_sol} Hint: {guess_obj.hint} Exclude: '{guess_obj.exclude}' {guess_obj.remaining_cnt} remaining solutions {guess_obj.remaining_sol_list}")
+            print(f"   Solution: {guess_obj.maybe_sol} Hint: {guess_obj.hint}{guess_obj.exclude} {guess_obj.remaining_cnt} remaining solutions {guess_obj.remaining_sol_list}")
