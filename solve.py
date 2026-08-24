@@ -9,8 +9,8 @@ EXCLUSION_CHAR = "^"
 UNKNOWN_CHAR = "_"
 
 class Solutions:
-   def __init__(self, solution_file_name: str, verbose: bool = False, very_verbose: bool = False):
-      self.verbose = 1 if verbose else 2 if very_verbose else 0
+   def __init__(self, solution_file_name: str, verbose: bool = False, quiet: bool = False):
+      self.verbose = 2 if verbose else 0 if quiet else 1
       self.all_solutions = []
       with open(solution_file_name) as f:
          for l in f:
@@ -43,7 +43,7 @@ class Solutions:
       def filter_func(s: str) -> bool:
          for c in exclude_str.upper():
             if c in s:
-               if self.verbose > 1:
+               if self.verbose >= 3:
                   print(f"Discarding {s} because it contains excluded character {c}")
                return False
          return True
@@ -138,7 +138,7 @@ class Solutions:
 
       return results
 
-   def find_best_guess(self, solutions: list[str], hard_mode: bool = False) -> str:
+   def find_best_guess(self, solutions: list[str], hard_mode: bool = False):
       tot_sols = len(solutions)
       if tot_sols == 0:
          raise ValueError("No solutions left to guess from")
@@ -167,11 +167,11 @@ class Solutions:
          if score < best_score:
             best_score = score
             best_guess = guess
-            if self.verbose > 0:
+            if self.verbose >= 1:
                print(f"Best guess {guess} with expected solutions remaining {score/tot_sols:.2f} on average")
-         elif self.verbose > 1:
+         elif self.verbose >= 2:
             print(f"Guess {guess} score of {score} with {tot_sols} solutions")
-      return best_guess
+      return (best_guess, best_score/tot_sols)
 
    def unit_tests(self):
       # Test the filter function
@@ -192,11 +192,13 @@ class Solutions:
 if __name__ == "__main__":
    os.chdir(SCRIPT_DIR)
 
-   parser = OptionParser(usage="%prog [options] <solution_file> [filters ...]")
+   parser = OptionParser(usage="%prog [options] [filters ...]")
+   parser.add_option("-s", "--solution-file", action="store", dest="solution_file",
+                     default="./solutions.txt", help="solution file (default: ./solutions.txt)")
+   parser.add_option("-q", "--quiet", action="store_true", dest="quiet",
+                     default=False, help="disable most output")
    parser.add_option("-v", "--verbose", action="store_true", dest="verbose",
                      default=False, help="enable verbose output")
-   parser.add_option("-w", "--very-verbose", action="store_true", dest="very_verbose",
-                     default=False, help="enable very verbose output")
    parser.add_option("--hard-mode", action="store_true", dest="hard_mode",
                      default=False, help="only use guesses satisfying known clues")
    parser.add_option("--no-tests", action="store_true", dest="no_tests",
@@ -204,28 +206,25 @@ if __name__ == "__main__":
    options, args = parser.parse_args()
 
    if not options.no_tests:
-      sols = Solutions("./solutions.txt", verbose=False, very_verbose=False)
+      sols = Solutions(options.solution_file, verbose=False, quiet=False)
       sols.unit_tests()
 
-   if len(args) < 1:
-      parser.error("a solution file is required")
-   solution_file_name = args[0]
-
-   sols = Solutions(solution_file_name, verbose=options.verbose, very_verbose=options.very_verbose)
+   sols = Solutions(options.solution_file, verbose=options.verbose, quiet=options.quiet)
    print(f"All Possible Solutions: {len(sols.all_solutions)}")
 
-   if len(args) > 1:
+   if len(args) > 0:
       # Apply the solution filters
-      sols.filter(args[1:])
+      sols.filter(args)
       num_sols = len(sols)
       print(f"Filtered Solutions: {num_sols}")
-      if num_sols>0 and num_sols < 10:
+      if num_sols > 0 and (sols.verbose >= 2 or num_sols <= 10):
          print(f"{sols.filtered_sols}")
 
-      best_guess = sols.find_best_guess(sols.filtered_sols, hard_mode=options.hard_mode)
-      print(f"Best Guess: {best_guess}")
+      best_guess, best_score = sols.find_best_guess(sols.filtered_sols, hard_mode=options.hard_mode)
+      if sols.verbose != 1:
+         print(f"Best guess {best_guess} with expected solutions remaining {best_score:.2f} on average")
 
-      if sols.verbose > 1 or len(sols) < 31:
+      if sols.verbose >= 2 or len(sols) < 30:
          for s, hint, exclude, remaining in sols.try_guess(best_guess):
             if hint==best_guess:
                print(f"   Solution: {s} Hint: {hint} SUCCESS")
