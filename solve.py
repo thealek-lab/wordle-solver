@@ -152,7 +152,7 @@ class Solutions:
       for maybe_sol in self.filtered_sols:
          hint, exclude = self.make_hint(guess_str, maybe_sol)
          if hint==guess_str:
-            guess_set.add_guess(Guess(maybe_sol, hint, exclude, [guess_str]))
+            guess_set.add_guess(Guess(maybe_sol, hint, exclude, []))
             continue
          clone = sols.clone()
          clone.filter([hint, exclude])
@@ -193,7 +193,7 @@ class Solutions:
          elif self.verbose >= 2:
             print(f"Guess {guess_str} score of {guess_set.remaining_avg:.2f} with {tot_guesses} solutions")
          elif self.verbose >= 1 and loop_done_time - last_time >= 5.0:
-            print(f"[{percent_complete:.2f}% after {loop_done_time - start_time:.2f}s done in {time_remaining:.2f}s] Best guess is still {best_guess.guess_str} {best_guess.remaining_avg:.2f} (last guess {guess_str} {guess_set.remaining_avg:.2f})")
+            print(f"[{percent_complete:.2f}% after {loop_done_time - start_time:.2f}s done in {time_remaining:.2f}s] Best guess is still {best_guess.guess_str} {best_guess.remaining_avg:.2f} (last guess was {guess_str} {guess_set.remaining_avg:.2f})")
             last_time = loop_done_time
       return (best_guess, loop_done_time - start_time)
 
@@ -257,11 +257,11 @@ if __name__ == "__main__":
 
       best_guess, elapsed = sols.find_best_guess(sols.filtered_sols, hard_mode=options.hard_mode, hint_best=hint_obj)
       print(f"Time taken: {elapsed:.2f} seconds")
-      print(f"Best guess {best_guess.remaining_cnt} with expected solutions remaining {best_guess.remaining_avg:.2f} on average")
+      print(f"Best guess {best_guess.guess_str} with expected solutions remaining {best_guess.remaining_avg:.2f} on average")
 
       if sols.verbose >= 2 or len(sols) < 30:
-         for s, hint, exclude, remaining in sols.try_guess(best_guess):
-            if hint==best_guess:
-               print(f"   Solution: {s} Hint: {hint} SUCCESS")
+         for guess_obj in sols.try_guess(best_guess.guess_str, verbose=sols.verbose).guesses:
+            if guess_obj.hint == best_guess.guess_str:
+               print(f"   Solution: {guess_obj.maybe_sol} Hint: {guess_obj.hint} SUCCESS")
                continue
-            print(f"   Solution: {s} Hint: {hint} Exclude: '{exclude}' {len(remaining)} remaining solutions {remaining}")
+            print(f"   Solution: {guess_obj.maybe_sol} Hint: {guess_obj.hint} Exclude: '{guess_obj.exclude}' {guess_obj.remaining_cnt} remaining solutions {guess_obj.remaining_sol_list}")
