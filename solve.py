@@ -131,7 +131,8 @@ class Solutions:
             hint = Filter.make_hint(guess_str, maybe_sol)
             if hint.is_match(guess_str):
                continue
-            partition_counts[hint] = partition_counts.get(hint, 0) + 1
+            key = str(hint)
+            partition_counts[key] = partition_counts.get(key, 0) + 1
 
          score = sum(count * count for count in partition_counts.values())
          guess_set = GuessSet(guess_str, len(filtered_sols), guess_str in self.all_solutions, guess_str in self.filtered_sols)
