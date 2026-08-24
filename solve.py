@@ -220,7 +220,9 @@ if __name__ == "__main__":
    parser.add_option("-s", "--solution-file", action="store", dest="solution_file",
                      default="./solutions.txt", help="solution file (default: ./solutions.txt)")
    parser.add_option("-b", "--hint-best", action="store", dest="hint_best",
-                     help="hint best guess (e.g. 'STALE' or 'ADORE')")
+                     help="hint best guess (e.g. 'STALE' or 'ALTER')")
+   parser.add_option("-f", "--force-guess", action="store", dest="force_guess",
+                     help="force guess (e.g. 'STALE' or 'ALTER')")
    parser.add_option("-q", "--quiet", action="store_true", dest="quiet",
                      default=False, help="disable most output")
    parser.add_option("-v", "--verbose", action="store_true", dest="verbose",
@@ -238,6 +240,10 @@ if __name__ == "__main__":
    sols = Solutions(options.solution_file, verbose=options.verbose, quiet=options.quiet)
    print(f"All Possible Solutions: {len(sols.all_solutions)}")
 
+   if options.hint_best and len(args) == 0:
+      # Force search through the entire set of solutions if a hint best guess is provided but no filters are given
+      args.append("_____")
+
    if len(args) > 0:
       # Apply the solution filters
       sols.filter(args)
@@ -246,18 +252,25 @@ if __name__ == "__main__":
       if num_sols > 0 and (sols.verbose >= 2 or num_sols <= 10):
          print(f"{sols.filtered_sols}")
 
-      hint_obj = None
-      if options.hint_best:
-         if options.hint_best not in sols.filtered_sols:
-            print(f"Hint best guess {options.hint_best} is not in the filtered solutions!")
-            sys.exit(1)
-         else:
+      if options.force_guess:
+         if options.force_guess not in sols.filtered_sols:
+            print(f"WARNING: Forced guess {options.force_guess} is not in the filtered solutions!")
+
+         hint_obj = sols.try_guess(options.force_guess)
+         best_guess = GuessSet(options.force_guess, num_sols)
+         print(f"Forced guess {best_guess.guess_str} with expected solutions remaining {hint_obj.remaining_avg:.2f} on average from total {num_sols}")
+      else:
+         hint_obj = None
+         if options.hint_best:
+            if options.hint_best not in sols.filtered_sols:
+               print(f"WARNING: Hint best guess {options.hint_best} is not in the filtered solutions!")
+
             hint_obj = sols.try_guess(options.hint_best)
             print(f"Hinted best guess {options.hint_best} with expected solutions remaining {hint_obj.remaining_avg:.2f} on average from total {num_sols}")
 
-      best_guess, elapsed = sols.find_best_guess(sols.filtered_sols, hard_mode=options.hard_mode, hint_best=hint_obj)
-      print(f"Time taken: {elapsed:.2f} seconds")
-      print(f"Best guess {best_guess.guess_str} with expected solutions remaining {best_guess.remaining_avg:.2f} on average")
+         best_guess, elapsed = sols.find_best_guess(sols.filtered_sols, hard_mode=options.hard_mode, hint_best=hint_obj)
+         print(f"Time taken: {elapsed:.2f} seconds")
+         print(f"Best guess {best_guess.guess_str} with expected solutions remaining {best_guess.remaining_avg:.2f} on average")
 
       if sols.verbose >= 2 or len(sols) < 30:
          for guess_obj in sols.try_guess(best_guess.guess_str, verbose=sols.verbose).guesses:
