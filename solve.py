@@ -151,8 +151,10 @@ class Solutions:
       
       # In hard mode, guesses must themselves satisfy all known clues.
       guesses = solutions if hard_mode else self.all_solutions
+      tot_guesses = len(guesses)
       
-      for guess in guesses:
+      last_time = start_time
+      for i, guess in enumerate(guesses):
          score=0
          for s in solutions:
             hint, exclude = self.make_hint(guess, s)
@@ -165,18 +167,26 @@ class Solutions:
                # Bad guess with no solutions left, skip it
                continue
             score += len(clone.filtered_sols)
+            if self.verbose >= 2:
+               print(f"Guess {guess} score of {score} with solution {s} hint {hint}")
             if score > best_score:
                # No need to continue if the score is already worse than the best score
                break
-            #print(f"Guess {guess} score of {score} with solution {s} hint {hint}")
+         percent_complete = 100.0*(i+1)/tot_guesses
+         loop_done_time = time.perf_counter()
+         time_remaining = (loop_done_time - start_time) * (tot_guesses - i - 1) / (i + 1)
          if score < best_score:
             best_score = score
             best_guess = guess
             if self.verbose >= 1:
-               print(f"Best guess {guess} with expected solutions remaining {score/tot_sols:.2f} on average")
+               print(f"[{percent_complete:.2f}% after {loop_done_time - start_time:.2f}s done in {time_remaining:.2f}s] Best guess {best_guess} with expected solutions remaining {best_score/tot_sols:.2f} on average")
+            last_time = loop_done_time
          elif self.verbose >= 2:
             print(f"Guess {guess} score of {score} with {tot_sols} solutions")
-      return (best_guess, best_score/tot_sols, time.perf_counter() - start_time)
+         elif self.verbose >= 1 and loop_done_time - last_time >= 5.0:
+            print(f"[{percent_complete:.2f}% after {loop_done_time - start_time:.2f}s done in {time_remaining:.2f}s] Best guess is still {best_guess}")
+            last_time = loop_done_time
+      return (best_guess, best_score/tot_sols, loop_done_time - start_time)
 
    def unit_tests(self):
       # Test the filter function
@@ -227,8 +237,7 @@ if __name__ == "__main__":
 
       best_guess, best_score, elapsed = sols.find_best_guess(sols.filtered_sols, hard_mode=options.hard_mode)
       print(f"Time taken: {elapsed:.2f} seconds")
-      if sols.verbose != 1:
-         print(f"Best guess {best_guess} with expected solutions remaining {best_score:.2f} on average")
+      print(f"Best guess {best_guess} with expected solutions remaining {best_score:.2f} on average")
 
       if sols.verbose >= 2 or len(sols) < 30:
          for s, hint, exclude, remaining in sols.try_guess(best_guess):
