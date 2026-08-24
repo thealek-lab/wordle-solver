@@ -9,6 +9,27 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 EXCLUSION_CHAR = "^"
 UNKNOWN_CHAR = "_"
 
+class Guess:
+   def __init__(self, maybe_sol: str, hint: str, exclude: str, remaining_sol_list: list):
+      self.maybe_sol = maybe_sol
+      self.hint = hint
+      self.exclude = exclude
+      self.remaining_sol_list = remaining_sol_list
+      self.remaining_cnt = len(remaining_sol_list)
+
+class GuessSet:
+   def __init__(self, guess_str: str, num_sols: int):
+      self.guess_str = guess_str
+      self.guesses = []
+      self.num_sols = num_sols
+      self.remaining_cnt = 0
+      self.remaining_avg = float('inf')
+
+   def add_guess(self, guess: Guess):
+      self.guesses.append(guess)
+      self.remaining_cnt += len(guess.remaining_sol_list)
+      self.remaining_avg = self.remaining_cnt / self.num_sols
+
 class Solutions:
    def __init__(self, solution_file_name: str, verbose: bool = False, quiet: bool = False):
       self.verbose = 2 if verbose else 0 if quiet else 1
@@ -126,67 +147,55 @@ class Solutions:
          exclude = [EXCLUSION_CHAR] + sorted(set(exclude))
       return ("".join(hint), "".join(exclude))
 
-   def try_guess(self, guess: str):
-      results = []
+   def try_guess(self, guess_str: str, verbose: int = 1, lowest_remaining_cnt: float = float('inf')) -> GuessSet:
+      guess_set = GuessSet(guess_str, len(self.filtered_sols))
       for maybe_sol in self.filtered_sols:
-         hint, exclude = self.make_hint(guess, maybe_sol)
-         if hint==best_guess:
-            results.append((maybe_sol, hint, exclude, self.filtered_sols))
+         hint, exclude = self.make_hint(guess_str, maybe_sol)
+         if hint==guess_str:
+            guess_set.add_guess(Guess(maybe_sol, hint, exclude, [guess_str]))
             continue
          clone = sols.clone()
          clone.filter([hint, exclude])
-         results.append((maybe_sol, hint, exclude, clone.filtered_sols))
+         guess_obj = Guess(maybe_sol, hint, exclude, clone.filtered_sols)
 
-      return results
+         if self.verbose >= 2:
+            print(f"Guess {guess_str} number remaining: {guess_obj.remaining_cnt} with solution {maybe_sol} hint {hint}")
+         guess_set.add_guess(guess_obj)
 
-   def find_best_guess(self, solutions: list[str], hard_mode: bool = False):
+         if guess_set.remaining_avg > lowest_remaining_cnt:
+            # No need to continue if the score is already worse than the best score
+            break
+      return guess_set
+
+   def find_best_guess(self, solutions: list[str], hint_best: GuessSet = None, hard_mode: bool = False) -> tuple[GuessSet, float]:
       start_time = time.perf_counter()
-      tot_sols = len(solutions)
-      if tot_sols == 0:
-         raise ValueError("No solutions left to guess from")
-      
-      # Find the best guess by calculating the expected number of remaining solutions for each guess
-      best_guess = ""
-      best_score = float('inf')
-      
+
       # In hard mode, guesses must themselves satisfy all known clues.
-      guesses = solutions if hard_mode else self.all_solutions
-      tot_guesses = len(guesses)
-      
+      guess_list = solutions if hard_mode else self.all_solutions
+      tot_guesses = len(guess_list)
+      if tot_guesses == 0:
+         raise ValueError("No solutions left to guess from")
+
+      # Find the best guess by calculating the expected number of remaining solutions for each guess
+      best_guess = hint_best if hint_best is not None else GuessSet(guess_list[0], num_sols=tot_guesses)
+
       last_time = start_time
-      for i, guess in enumerate(guesses):
-         score=0
-         for s in solutions:
-            hint, exclude = self.make_hint(guess, s)
-            if guess == hint:
-               continue
-            clone = self.clone()
-            clone.filter([hint, exclude])
-            remaining_sols = len(clone.filtered_sols)
-            if remaining_sols == 0:
-               # Bad guess with no solutions left, skip it
-               continue
-            score += len(clone.filtered_sols)
-            if self.verbose >= 2:
-               print(f"Guess {guess} score of {score} with solution {s} hint {hint}")
-            if score > best_score:
-               # No need to continue if the score is already worse than the best score
-               break
+      for i, guess_str in enumerate(guess_list):
+         guess_set = sols.try_guess(guess_str, verbose=self.verbose, lowest_remaining_cnt=best_guess.remaining_avg)
          percent_complete = 100.0*(i+1)/tot_guesses
          loop_done_time = time.perf_counter()
          time_remaining = (loop_done_time - start_time) * (tot_guesses - i - 1) / (i + 1)
-         if score < best_score:
-            best_score = score
-            best_guess = guess
+         if guess_set.remaining_avg < best_guess.remaining_avg:
+            best_guess = guess_set
             if self.verbose >= 1:
-               print(f"[{percent_complete:.2f}% after {loop_done_time - start_time:.2f}s done in {time_remaining:.2f}s] Best guess {best_guess} with expected solutions remaining {best_score/tot_sols:.2f} on average")
+               print(f"[{percent_complete:.2f}% after {loop_done_time - start_time:.2f}s done in {time_remaining:.2f}s] Best guess {best_guess.guess_str} with expected solutions remaining {best_guess.remaining_avg:.2f} on average")
             last_time = loop_done_time
          elif self.verbose >= 2:
-            print(f"Guess {guess} score of {score} with {tot_sols} solutions")
+            print(f"Guess {guess_str} score of {guess_set.remaining_avg:.2f} with {tot_guesses} solutions")
          elif self.verbose >= 1 and loop_done_time - last_time >= 5.0:
-            print(f"[{percent_complete:.2f}% after {loop_done_time - start_time:.2f}s done in {time_remaining:.2f}s] Best guess is still {best_guess}")
+            print(f"[{percent_complete:.2f}% after {loop_done_time - start_time:.2f}s done in {time_remaining:.2f}s] Best guess is still {best_guess.guess_str} {best_guess.remaining_avg:.2f} (last guess {guess_str} {guess_set.remaining_avg:.2f})")
             last_time = loop_done_time
-      return (best_guess, best_score/tot_sols, loop_done_time - start_time)
+      return (best_guess, loop_done_time - start_time)
 
    def unit_tests(self):
       # Test the filter function
@@ -210,6 +219,8 @@ if __name__ == "__main__":
    parser = OptionParser(usage="%prog [options] [filters ...]")
    parser.add_option("-s", "--solution-file", action="store", dest="solution_file",
                      default="./solutions.txt", help="solution file (default: ./solutions.txt)")
+   parser.add_option("-b", "--hint-best", action="store", dest="hint_best",
+                     help="hint best guess (e.g. 'STALE' or 'ADORE')")
    parser.add_option("-q", "--quiet", action="store_true", dest="quiet",
                      default=False, help="disable most output")
    parser.add_option("-v", "--verbose", action="store_true", dest="verbose",
@@ -235,9 +246,18 @@ if __name__ == "__main__":
       if num_sols > 0 and (sols.verbose >= 2 or num_sols <= 10):
          print(f"{sols.filtered_sols}")
 
-      best_guess, best_score, elapsed = sols.find_best_guess(sols.filtered_sols, hard_mode=options.hard_mode)
+      hint_obj = None
+      if options.hint_best:
+         if options.hint_best not in sols.filtered_sols:
+            print(f"Hint best guess {options.hint_best} is not in the filtered solutions!")
+            sys.exit(1)
+         else:
+            hint_obj = sols.try_guess(options.hint_best)
+            print(f"Hinted best guess {options.hint_best} with expected solutions remaining {hint_obj.remaining_avg:.2f} on average from total {num_sols}")
+
+      best_guess, elapsed = sols.find_best_guess(sols.filtered_sols, hard_mode=options.hard_mode, hint_best=hint_obj)
       print(f"Time taken: {elapsed:.2f} seconds")
-      print(f"Best guess {best_guess} with expected solutions remaining {best_score:.2f} on average")
+      print(f"Best guess {best_guess.remaining_cnt} with expected solutions remaining {best_guess.remaining_avg:.2f} on average")
 
       if sols.verbose >= 2 or len(sols) < 30:
          for s, hint, exclude, remaining in sols.try_guess(best_guess):
