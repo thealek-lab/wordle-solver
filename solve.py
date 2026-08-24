@@ -203,7 +203,7 @@ class Solutions:
          return (guess_set, time.perf_counter() - start_time)
 
       # In hard mode, guesses must themselves satisfy all known clues.
-      guess_list = solutions if hard_mode else self.all_solutions
+      guess_list = solutions if hard_mode else self.all_guesses
       tot_guesses = len(guess_list)
 
       if reverse:
@@ -268,7 +268,7 @@ if __name__ == "__main__":
    parser.add_option("-s", "--solution-file", action="store", dest="solutions_file",
                      default="./solutions.txt", help="solution file (default: ./solutions.txt)")
    parser.add_option("-g", "--guesses-file", action="store", dest="guesses_file",
-                     default="./all_guesses.txt", help="guesses file (default: ./all_guesses.txt)")
+                     default="./all_guesses_2022_11K.txt", help="guesses file (default: ./all_guesses_2022_11K.txt)")
    parser.add_option("-b", "--hint-best", action="store", dest="hint_best",
                      help="hint best guess (e.g. 'SLATE' or 'RAISE')")
    parser.add_option("-f", "--force-guess", action="store", dest="force_guess",
@@ -323,6 +323,8 @@ if __name__ == "__main__":
 
          best_guess, elapsed = sols.find_best_guess(sols.filtered_sols, hard_mode=options.hard_mode, hint_best=hint_obj, reverse=options.reverse)
          print(f"Time taken: {elapsed:.2f} seconds")
+         if best_guess.guess_str not in sols.all_solutions:
+            print(f"WARNING: Best guess {best_guess.guess_str} is not in the solutions file!")
          print(f"Best guess {best_guess.guess_str}: expected solutions remaining {best_guess.remaining_avg:.2f} on average from {best_guess.remaining_cnt}/{num_sols}")
 
       if sols.verbose >= 2 or len(sols) < 30:
