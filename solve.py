@@ -34,7 +34,7 @@ class GuessSet:
       self.remaining_avg = self.remaining_cnt / self.num_sols
 
 class Solutions:
-   def __init__(self, solution_file_name: str, verbose: bool = False, quiet: bool = False):
+   def __init__(self, solution_file_name: str, guesses_file_name: str = "", verbose: bool = False, quiet: bool = False):
       self.verbose = 2 if verbose else 0 if quiet else 1
       self.all_solutions = []
       with open(solution_file_name) as f:
@@ -48,6 +48,21 @@ class Solutions:
 
       self.all_solutions = sorted(self.all_solutions)
       self.filtered_sols = self.all_solutions.copy()
+      
+      if len(guesses_file_name) == 0:
+         self.all_guesses = self.all_solutions.copy()
+      else:
+         self.all_guesses = []
+         with open(guesses_file_name) as f:
+            for l in f:
+               line = l.strip().split()
+               if len(line) == 1:
+                  guess = line[0].upper()
+                  if len(guess) != 5:
+                     raise ValueError(f"Invalid guess length: {guess}")
+                  self.all_guesses.append(guess)
+
+         self.all_guesses = sorted(self.all_guesses)
 
    def __len__(self) -> int:
       return len(self.filtered_sols)
@@ -250,8 +265,10 @@ if __name__ == "__main__":
    os.chdir(SCRIPT_DIR)
 
    parser = OptionParser(usage="%prog [options] [filters ...]")
-   parser.add_option("-s", "--solution-file", action="store", dest="solution_file",
+   parser.add_option("-s", "--solution-file", action="store", dest="solutions_file",
                      default="./solutions.txt", help="solution file (default: ./solutions.txt)")
+   parser.add_option("-g", "--guesses-file", action="store", dest="guesses_file",
+                     default="./all_guesses.txt", help="guesses file (default: ./all_guesses.txt)")
    parser.add_option("-b", "--hint-best", action="store", dest="hint_best",
                      help="hint best guess (e.g. 'SLATE' or 'RAISE')")
    parser.add_option("-f", "--force-guess", action="store", dest="force_guess",
@@ -269,11 +286,12 @@ if __name__ == "__main__":
    options, args = parser.parse_args()
 
    if not options.no_tests:
-      sols = Solutions(options.solution_file, verbose=False, quiet=False)
+      sols = Solutions(options.solutions_file, verbose=False, quiet=False)
       sols.unit_tests()
 
-   sols = Solutions(options.solution_file, verbose=options.verbose, quiet=options.quiet)
+   sols = Solutions(options.solutions_file, options.guesses_file, verbose=options.verbose, quiet=options.quiet)
    print(f"All Possible Solutions: {len(sols.all_solutions)}")
+   print(f"All Possible Guesses: {len(sols.all_guesses)}")
 
    if options.hint_best and len(args) == 0:
       # Force search through the entire set of solutions if a hint best guess is provided but no filters are given
