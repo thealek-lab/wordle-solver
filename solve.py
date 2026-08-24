@@ -48,11 +48,11 @@ class Solutions:
 
       self.all_solutions = sorted(self.all_solutions)
       self.filtered_sols = self.all_solutions.copy()
-      
+
       if len(guesses_file_name) == 0:
-         self.all_guesses = self.all_solutions.copy()
+         all_guesses = self.all_solutions.copy()
       else:
-         self.all_guesses = []
+         all_guesses = []
          with open(guesses_file_name) as f:
             for l in f:
                line = l.strip().split()
@@ -60,9 +60,19 @@ class Solutions:
                   guess = line[0].upper()
                   if len(guess) != 5:
                      raise ValueError(f"Invalid guess length: {guess}")
-                  self.all_guesses.append(guess)
+                  all_guesses.append(guess)
 
-         self.all_guesses = sorted(self.all_guesses)
+         if len(set(all_guesses)) != len(all_guesses):
+            raise ValueError(f"Duplicate guess in guesses file: {guesses_file_name}")
+
+         all_guesses.extend(self.all_solutions.copy())
+         all_guesses = sorted(all_guesses)
+
+      for sol in self.all_solutions:
+         if not sol in all_guesses:
+            raise ValueError(f"Missing solution {sol} in guesses file: {guesses_file_name}")
+
+      self.all_guesses = all_guesses
 
    def __len__(self) -> int:
       return len(self.filtered_sols)
