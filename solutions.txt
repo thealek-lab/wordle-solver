@@ -1,6 +1,6 @@
 # Downloaded from https://wordletools.azurewebsites.net/weightedbottles?SortOrder=ByWeight&submit=Submit
 
-# List in alphabetical order 
+# List in order of likelihood
 
 Word 	Weight
 ABACK 	58%

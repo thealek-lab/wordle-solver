@@ -220,9 +220,9 @@ if __name__ == "__main__":
    parser.add_option("-s", "--solution-file", action="store", dest="solution_file",
                      default="./solutions.txt", help="solution file (default: ./solutions.txt)")
    parser.add_option("-b", "--hint-best", action="store", dest="hint_best",
-                     help="hint best guess (e.g. 'STALE' or 'ALTER')")
+                     help="hint best guess (e.g. 'SLATE' or 'RAISE')")
    parser.add_option("-f", "--force-guess", action="store", dest="force_guess",
-                     help="force guess (e.g. 'STALE' or 'ALTER')")
+                     help="force guess (e.g. 'SLATE' or 'RAISE')")
    parser.add_option("-q", "--quiet", action="store_true", dest="quiet",
                      default=False, help="disable most output")
    parser.add_option("-v", "--verbose", action="store_true", dest="verbose",
