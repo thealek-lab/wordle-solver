@@ -151,8 +151,9 @@ class Solutions:
          exclude = [EXCLUSION_CHAR] + sorted(set(exclude))
       return ("".join(hint), "".join(exclude))
 
-   def try_guess(self, guess_str: str, verbose: int = 1, lowest_remaining_cnt: int = -1) -> GuessSet:
-      lowest_remaining_cnt = len(self.all_solutions) if lowest_remaining_cnt < 0 else lowest_remaining_cnt
+   def try_guess(self, guess_str: str, verbose: int = 1, lowest_remaining_cnt: int = sys.maxsize) -> GuessSet:
+      max_sols = len(self.all_solutions)
+      lowest_remaining_cnt = max_sols*max_sols if lowest_remaining_cnt == sys.maxsize else lowest_remaining_cnt
 
       guess_set = GuessSet(guess_str, len(self.filtered_sols))
       for maybe_sol in self.filtered_sols:
@@ -266,7 +267,7 @@ if __name__ == "__main__":
 
          hint_obj = sols.try_guess(options.force_guess)
          best_guess = GuessSet(options.force_guess, num_sols)
-         print(f"Forced guess {best_guess.guess_str} with expected solutions remaining {hint_obj.remaining_avg:.2f} on average from total {num_sols}")
+         print(f"Forced guess {best_guess.guess_str} with expected solutions remaining {hint_obj.remaining_avg:.2f} on average from {hint_obj.remaining_cnt}/{num_sols}")
       else:
          hint_obj = None
          if options.hint_best:
@@ -274,7 +275,8 @@ if __name__ == "__main__":
                print(f"WARNING: Hint best guess {options.hint_best} is not in the filtered solutions!")
 
             hint_obj = sols.try_guess(options.hint_best)
-            print(f"Hinted best guess {options.hint_best} with expected solutions remaining {hint_obj.remaining_avg:.2f} on average from total {num_sols}")
+            assert not hint_obj.truncated, f"Hint best guess {options.hint_best} was truncated after {hint_obj.remaining_cnt}/{num_sols}!"
+            print(f"Hinted best guess {options.hint_best} with expected solutions remaining {hint_obj.remaining_avg:.2f} on average from {hint_obj.remaining_cnt}/{num_sols}")
 
          best_guess, elapsed = sols.find_best_guess(sols.filtered_sols, hard_mode=options.hard_mode, hint_best=hint_obj)
          print(f"Time taken: {elapsed:.2f} seconds")
