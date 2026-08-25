@@ -24,7 +24,9 @@ class GuessSet:
       self.guesses.append(guess)
       if self.remaining_cnt == sys.maxsize:
          self.remaining_cnt = 0
-      self.remaining_cnt += len(guess.remaining_sol_set)
+      new_sols = len(guess.remaining_sol_set)
+      if new_sols > 0:
+         self.remaining_cnt += 0.5+new_sols/2
       self.remaining_avg = self.remaining_cnt / self.num_sols
 
    def to_str(self) -> str:

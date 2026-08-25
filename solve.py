@@ -111,7 +111,7 @@ class Solutions:
       if hint_best is None:
          best_guess = self.try_guess(solutions[0])
          best_guess.is_in_remaining_sol_set = True
-         print(f"Initial guess {best_guess.to_str()}: expected solutions remaining {best_guess.remaining_avg:.2f} on average from {best_guess.remaining_cnt}/{tot_guesses}")
+         print(f"Initial guess {best_guess.to_str()}: expected solutions remaining {best_guess.remaining_avg:.2f} on average from {best_guess.remaining_cnt}/{num_sols}")
       best_score = best_guess.remaining_cnt
 
       last_time = start_time
