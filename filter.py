@@ -98,6 +98,14 @@ class Filter:
 
    @classmethod
    def make_hint(cls, guess: str, solution: str) -> "Filter":
+      guess = guess.upper()
+      assert guess.isalpha(), f"Guess string '{guess}' is not alphabetic!"
+      assert len(guess) == FILTER_LENGTH, f"Guess string '{guess}' is not 5 characters long!"
+
+      solution = solution.upper()
+      assert solution.isalpha(), f"Solution string '{solution}' is not alphabetic!"
+      assert len(solution) == FILTER_LENGTH, f"Solution string '{solution}' is not 5 characters long!"
+
       sol = list(solution)
       # Make a hint based on the guess and the solution
       include = list(EMPTY_FILTER)

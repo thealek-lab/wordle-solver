@@ -24,6 +24,8 @@ if __name__ == "__main__":
                      help="hint best guess (e.g. 'SLATE' or 'RAISE')")
    parser.add_option("-f", "--force-guess", action="store", dest="force_guess",
                      help="force guess (e.g. 'SLATE' or 'RAISE')")
+   parser.add_option("-c", "--calc-init-guess", action="store", dest="calc_init",
+                     help="Calculate initial guess (e.g. 'SLATE' or 'RAISE')")
    parser.add_option("-q", "--quiet", action="store_true", dest="quiet",
                      default=False, help="disable most output")
    parser.add_option("-v", "--verbose", action="store_true", dest="verbose",
@@ -42,10 +44,17 @@ if __name__ == "__main__":
       
    verbosity = 2 if opts.verbose else 0 if opts.quiet else 1
    opts.verbosity = verbosity
-
+   
+   if opts.calc_init:
+      GameSim.calculate_initial_guess_performance(opts.calc_init, verbosity)
+      sys.exit(0)
+      
    if opts.simulate_game:
       sim = GameSim(opts.simulate_game, verbosity)
-      sim.run()
+      if opts.force_guess:
+         sim.run(opts.force_guess)
+      else:
+         sim.run()
       sys.exit(0)
       
    sols = Solver(opts.solutions_file, opts.guesses_file, verbosity=verbosity)
