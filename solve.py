@@ -110,6 +110,7 @@ class Solutions:
       best_guess = hint_best
       if hint_best is None:
          best_guess = self.try_guess(solutions[0])
+         best_guess.is_in_remaining_sol_set = True
          print(f"Initial guess {best_guess.to_str()}: expected solutions remaining {best_guess.remaining_avg:.2f} on average from {best_guess.remaining_cnt}/{tot_guesses}")
       best_score = best_guess.remaining_cnt
 
@@ -126,7 +127,7 @@ class Solutions:
             best_score = new_guess.remaining_cnt
             best_guess = new_guess
             if self.verbose >= 1:
-               print(f"[{percent_complete:.2f}% after {loop_done_time - start_time:.2f}s done in {time_remaining:.2f}s] Best guess {best_guess.to_str()}: expected solutions remaining {best_guess.remaining_avg:.2f} on average from {best_guess.remaining_cnt}/{tot_guesses}")
+               print(f"[{percent_complete:.2f}% after {loop_done_time - start_time:.2f}s done in {time_remaining:.2f}s] Best guess {best_guess.to_str()}: expected solutions remaining {best_guess.remaining_avg:.2f} on average from {best_guess.remaining_cnt}/{num_sols}")
             last_time = loop_done_time
          elif self.verbose >= 1 and loop_done_time - last_time >= 5.0:
             print(f"[{percent_complete:.2f}% after {loop_done_time - start_time:.2f}s done in {time_remaining:.2f}s] Best guess is still {best_guess.to_str()} {best_guess.remaining_avg:.2f} (last guess was {guess_str} {new_guess.remaining_avg:.2f}+)")
@@ -198,9 +199,10 @@ if __name__ == "__main__":
          if options.force_guess not in sols.filtered_sols:
             print(f"WARNING: Forced guess {options.force_guess} is not in the filtered solutions!")
 
-         hint_obj = sols.try_guess(options.force_guess)
-         best_guess = GuessSet(options.force_guess, num_sols, is_in_tot_sol_set=options.force_guess in sols.all_solutions, is_in_remaining_sol_set=options.force_guess in sols.filtered_sols)
-         print(f"Forced guess {best_guess.to_str()}: expected solutions remaining {hint_obj.remaining_avg:.2f} on average from {hint_obj.remaining_cnt}/{num_sols}")
+         best_guess = sols.try_guess(options.force_guess)
+         best_guess.is_in_remaining_sol_set = best_guess.guess_str in sols.filtered_sols
+         best_guess.is_in_tot_sol_set = best_guess.guess_str in sols.all_solutions
+         print(f"Forced guess {best_guess.to_str()}: expected solutions remaining {best_guess.remaining_avg:.2f} on average from {best_guess.remaining_cnt}/{num_sols}")
       else:
          hint_obj = None
          if options.hint_best:
