@@ -107,12 +107,12 @@ class Solutions:
       if reverse:
          guess_list = list(reversed(guess_list))
 
-      # Count hint partitions directly instead of cloning and filtering the
-      # solution set once for every possible hint.
       best_guess = hint_best
+      if hint_best is None:
+         best_guess = self.try_guess(solutions[0])
+         print(f"Initial guess {best_guess.to_str()}: expected solutions remaining {best_guess.remaining_avg:.2f} on average from {best_guess.remaining_cnt}/{tot_guesses}")
+      best_score = best_guess.remaining_cnt
 
-      best_score = hint_best.remaining_cnt if hint_best is not None else sys.maxsize
- 
       last_time = start_time
       for i, guess_str in enumerate(guess_list):
          new_guess = self.try_guess(guess_str, best_score)

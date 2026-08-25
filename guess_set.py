@@ -26,7 +26,7 @@ class GuessSet:
          self.remaining_cnt = 0
       self.remaining_cnt += len(guess.remaining_sol_set)
       self.remaining_avg = self.remaining_cnt / self.num_sols
-      
+
    def to_str(self) -> str:
       guess_type = "*"
       if self.is_in_remaining_sol_set:
@@ -34,21 +34,22 @@ class GuessSet:
       elif self.is_in_tot_sol_set:
          guess_type = "" 
       return f"{self.guess_str}{guess_type}"
-   
+
    def is_better_than(self, other: "GuessSet") -> bool:
       if self.remaining_cnt < other.remaining_cnt:
          return True
       elif self.guess_str != other.guess_str:
          if self.remaining_cnt == other.remaining_cnt:
-            #print(f"   Guess {self.to_str()} TIED with {other.to_str()}")
 
             # Prefer guesses from the remaining solutions when two guesses have the same score
             if self.is_in_remaining_sol_set:
                if not other.is_in_remaining_sol_set:
+                  print(f"   Guess {self.to_str()} TIED with {other.to_str()}: preferred because one of remaining solutions")
                   return True
-               
+
             # Prefer guesses from the solutions file when two guesses have the same score
             if self.is_in_tot_sol_set:
                if not other.is_in_tot_sol_set:
+                  print(f"   Guess {self.to_str()} TIED with {other.to_str()}: preferred because one of official solutions")
                   return True
       return False

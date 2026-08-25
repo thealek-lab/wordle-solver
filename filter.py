@@ -6,13 +6,13 @@ EMPTY_FILTER = UNKNOWN_CHAR * FILTER_LENGTH
 
 class Filter:
    def __init__(self, include_str: str, exclude_str: str):
-      
+
       # Sanity check include string
       stripped_include = include_str.replace(UNKNOWN_CHAR, "")
       include_len = len(stripped_include)
       if include_len > 0:
          assert stripped_include.isalpha(), f"Filter include string '{include_str}' is not alphabetic"
-      
+
       include_list = list(include_str)
       while len(include_list) < FILTER_LENGTH:
          include_list.append(UNKNOWN_CHAR)
@@ -23,7 +23,7 @@ class Filter:
       exclude_len = len(stripped_exclude)
       if exclude_len > 0:
          assert stripped_exclude.isalpha(), f"Filter exclude string '{exclude_str}' is not alphabetic"
-      
+
       exclude_list = list(exclude_str)
       while len(exclude_list) < FILTER_LENGTH:
          exclude_list.append(UNKNOWN_CHAR)
@@ -73,7 +73,7 @@ class Filter:
                up_ch = include_char.upper()
                if sol_list[i] == up_ch:
                   return False
-             
+
                try:
                   pos = sol_list.index(up_ch)
                except:
@@ -89,13 +89,13 @@ class Filter:
 
          return True
       return filter_func
-   
+
    @classmethod
    def make_filter_func(cls, filter_str: str):
       filter = Filter.make_filter(filter_str)
 
       return filter.make_filter_func_int()
-   
+
    @classmethod
    def make_hint(cls, guess: str, solution: str) -> "Filter":
       sol = list(solution)
@@ -116,7 +116,7 @@ class Filter:
             continue
          include[i] = c.lower()
          sol[pos] = UNKNOWN_CHAR
- 
+
       return Filter("".join(include), "".join(exclude))
 
    def __str__(self) -> str:
@@ -125,10 +125,10 @@ class Filter:
       if exclude_str != EMPTY_FILTER:
          filter_str += EXCLUSION_CHAR + exclude_str
       return filter_str
-   
+
    def is_match(self, guess_str: str) -> bool:
       return ("".join(self.include) == guess_str) and ("".join(self.exclude) == EMPTY_FILTER)
-      
+
    @classmethod
    def unit_test_hint(cls):
       # Test the make_hint function
@@ -136,14 +136,14 @@ class Filter:
          ("ABACK", "BREAD", "ab___^__ack"),
          ("ABACK", "BREAK", "ab__K^__ac_"),
          ("ABACK", "BREAM", "ab___^__ack"),
-         
+
          ("ABAMK", "BREAD", "ab___^__amk"),
          ("ABAMK", "BREAK", "ab__K^__am_"),
          ("ABAMK", "BREAM", "ab_m_^__a_k"),
       ]
       for guess, solution, expected in test_cases:
          hint = cls.make_hint(guess, solution)
-         
+
          assert str(hint) == expected, f"Make hint {solution} failed for guess {guess}. Expected {expected}, got {hint}"
 
    @classmethod
@@ -151,42 +151,42 @@ class Filter:
       # Test the filter function
       test_cases = [
          ("BAC__", "BACON", True),
-         
+
          ("_ALE", "VALET", True),
          ("_ALE", "PALER", True),
          ("_ALE", "BALER", True),
          ("_ALE", "PALED", True),
-         
+
          ("_ALEb", "BALER", True),
          ("_ALEb", "BALED", True),
-         
+
          ("_alek", "SALEK", False),
          ("_alek", "ALIKE", True),
          ("_alek", "ANKLE", True),
          ("_alek", "FLAKE", True),
          ("_alek", "LEAKY", True),
          ("_alek", "SLAKE", True),
-         
+
          ("_kela", "SALEK", True),
          ("_kela", "ALIKE", True),
          ("_kela", "FLAKE", True),
          ("_kela", "LEAKY", True),
          ("_kela", "SLAKE", True),
          ("_kela", "LATKE", True),
-         
+
          ("Alek", 'ANKLE', True),
-         
+
          ("ab___^__ack", "BREAD", True),
          ("ab__K^__ac_", "BREAK", True),
          ("ab___^__ack", "BREAM", True),
          ("ab___^__ack", "ABACK", False),
          ("ab__K^__ac_", "ABACK", False),
          ("ab___^__ack", "ABACK", False),
-                   
+
          ("ab___^__amk", "BREAD", True),
          ("ab__K^__am_", "BREAK", True),
          ("ab_m_^__a_k", "BREAM", True),
-         
+
          ("BREA_^____d", "BREAD", False),
          ("BREA_^____d", "BREAK", True),
          ("BREA_^____d", "BREAM", True),
@@ -194,7 +194,7 @@ class Filter:
       for filter, candidate, expected in test_cases:
          filter_func = cls.make_filter_func(filter)
          result = filter_func(candidate)
-         
+
          assert result == expected, f"Filter {filter} failed for candidate {candidate}. Expected {expected}, got {result}"
 
 # Run unit tests
