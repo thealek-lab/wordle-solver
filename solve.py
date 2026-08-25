@@ -59,12 +59,7 @@ class Solutions:
    def filter(self, filter_str_list: list[str]):
       filter_func_list = []
       for filt_str in filter_str_list:
-         filt_split_list = filt_str.split(EXCLUSION_CHAR)
-         if len(filt_split_list) == 2:
-            filter_func_list.append(Filter.make_filter_func(filt_split_list[0]))
-            filter_func_list.append(Filter.make_filter_func(EXCLUSION_CHAR+filt_split_list[1]))
-         else:
-            filter_func_list.append(Filter.make_filter_func(filt_str))
+         filter_func_list.append(Filter.make_filter_func(filt_str))
 
       for filt_func in filter_func_list:
          self.filtered_sols = list(filter(filt_func, self.filtered_sols))

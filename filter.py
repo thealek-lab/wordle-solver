@@ -60,33 +60,33 @@ class Filter:
          assert maybe_sol.upper() == maybe_sol, f"Possible solution {maybe_sol} is not uppercase"
          assert len(maybe_sol) == 5, f"Possible solution {maybe_sol} is not 5 characters long"
 
-         maybe_sol = list(maybe_sol)
+         sol_list = list(maybe_sol)
 
          # Loop through the filter known positions
          for i, include_char in enumerate(filter.include):
             if include_char != UNKNOWN_CHAR and include_char.isupper():
-               if maybe_sol[i] != include_char:
+               if sol_list[i] != include_char:
                   return False
-               maybe_sol[i] = UNKNOWN_CHAR
+               sol_list[i] = UNKNOWN_CHAR
 
          # Loop through the filter unknown positions
          for i, include_char in enumerate(filter.include):
             if include_char != UNKNOWN_CHAR and include_char.islower():
                up_ch = include_char.upper()
-               if maybe_sol[i] == up_ch:
+               if sol_list[i] == up_ch:
                   return False
              
                try:
-                  pos = maybe_sol.index(up_ch)
+                  pos = sol_list.index(up_ch)
                except:
                   return False
-               maybe_sol[pos] = UNKNOWN_CHAR
+               sol_list[pos] = UNKNOWN_CHAR
 
          # Loop through the filter exclusions
          for i, exclude_char in enumerate(filter.exclude):
             if exclude_char != UNKNOWN_CHAR:
                up_ch = exclude_char.upper()
-               if up_ch in maybe_sol:
+               if up_ch in sol_list:
                   return False
 
          return True
