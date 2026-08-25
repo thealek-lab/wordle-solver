@@ -110,18 +110,27 @@ class Solutions:
       # Count hint partitions directly instead of cloning and filtering the
       # solution set once for every possible hint.
       best_guess = hint_best
-      best_score = hint_best.remaining_cnt if hint_best is not None else sys.maxsize
 
+      best_score = hint_best.remaining_cnt if hint_best is not None else sys.maxsize
+ 
       last_time = start_time
       for i, guess_str in enumerate(guess_list):
          new_guess = self.try_guess(guess_str, best_score)
          new_guess.is_in_remaining_sol_set = guess_str in solutions
+         new_guess.is_in_tot_sol_set = guess_str in self.all_solutions
+         percent_complete = 100.0*(i+1)/tot_guesses
+         loop_done_time = time.perf_counter()
+         time_remaining = (loop_done_time - start_time) * (tot_guesses - i - 1) / (i + 1)
 
          if new_guess.is_better_than(best_guess):
-            print(f"Best guess {new_guess.to_str()}: expected solutions remaining {new_guess.remaining_avg:.2f} on average from {new_guess.remaining_cnt}/{num_sols}")
             best_score = new_guess.remaining_cnt
             best_guess = new_guess
-         
+            if self.verbose >= 1:
+               print(f"[{percent_complete:.2f}% after {loop_done_time - start_time:.2f}s done in {time_remaining:.2f}s] Best guess {best_guess.to_str()}: expected solutions remaining {best_guess.remaining_avg:.2f} on average from {best_guess.remaining_cnt}/{tot_guesses}")
+            last_time = loop_done_time
+         elif self.verbose >= 1 and loop_done_time - last_time >= 5.0:
+            print(f"[{percent_complete:.2f}% after {loop_done_time - start_time:.2f}s done in {time_remaining:.2f}s] Best guess is still {best_guess.to_str()} {best_guess.remaining_avg:.2f} (last guess was {guess_str} {new_guess.remaining_avg:.2f}+)")
+            last_time = loop_done_time
       return (best_guess, time.perf_counter() - start_time)
 
 
@@ -199,7 +208,9 @@ if __name__ == "__main__":
                print(f"WARNING: Hint best guess {options.hint_best} is not in the filtered solutions!")
 
             hint_obj = sols.try_guess(options.hint_best)
-            print(f"Hinted best guess {options.hint_best}: expected solutions remaining {hint_obj.remaining_avg:.2f} on average from {hint_obj.remaining_cnt}/{num_sols}")
+            hint_obj.is_in_remaining_sol_set = hint_obj.guess_str in sols.filtered_sols
+            hint_obj.is_in_tot_sol_set = hint_obj.guess_str in sols.all_solutions
+            print(f"Hinted best guess {hint_obj.to_str()}: expected solutions remaining {hint_obj.remaining_avg:.2f} on average from {hint_obj.remaining_cnt}/{num_sols}")
 
          best_guess, elapsed = sols.find_best_guess(hard_mode=options.hard_mode, hint_best=hint_obj, reverse=options.reverse)
          print(f"Time taken: {elapsed:.2f} seconds")
