@@ -19,7 +19,6 @@ class Filter:
       assert len(include_list) == FILTER_LENGTH, f"Filter include string '{include_str}' is not 5 characters long"
 
       # Sanity check exclude string
-      assert len(exclude_str) == 5, f"Filter exclude string '{exclude_str}' is not 5 characters long"
       stripped_exclude = exclude_str.replace(UNKNOWN_CHAR, "")
       exclude_len = len(stripped_exclude)
       if exclude_len > 0:
@@ -28,7 +27,15 @@ class Filter:
       exclude_list = list(exclude_str)
       while len(exclude_list) < FILTER_LENGTH:
          exclude_list.append(UNKNOWN_CHAR)
-      
+      assert len(exclude_list) == FILTER_LENGTH, f"Filter exclude string '{exclude_str}' is not 5 characters long"
+
+      if include_len > 0 and exclude_len > 0:
+         for i, c in enumerate(include_list):
+            if c != UNKNOWN_CHAR:
+               assert exclude_list[i] == UNKNOWN_CHAR, f"Filter exclude string '{exclude_str}' collides with include '{include_str}'"
+            else:
+               assert exclude_list[i] != UNKNOWN_CHAR, f"Filter exclude string '{exclude_str}' collides with include '{include_str}'"
+
       self.include = include_list
       self.exclude = exclude_list
       self.is_empty = include_len==0 and exclude_len==0
@@ -62,20 +69,25 @@ class Filter:
                   return False
                maybe_sol[i] = UNKNOWN_CHAR
 
-         # Loop through the filter unknown positions and exclusions
+         # Loop through the filter unknown positions
          for i, include_char in enumerate(filter.include):
-            exclude_char = filter.include[i].upper()
             if include_char != UNKNOWN_CHAR and include_char.islower():
-               if maybe_sol[i] == include_char.upper():
-                  return False
-               if maybe_sol[i] == exclude_char:
+               up_ch = include_char.upper()
+               if maybe_sol[i] == up_ch:
                   return False
              
                try:
-                  pos = maybe_sol.index(include_char.upper())
+                  pos = maybe_sol.index(up_ch)
                except:
                   return False
                maybe_sol[pos] = UNKNOWN_CHAR
+
+         # Loop through the filter exclusions
+         for i, exclude_char in enumerate(filter.exclude):
+            if exclude_char != UNKNOWN_CHAR:
+               up_ch = exclude_char.upper()
+               if up_ch in maybe_sol:
+                  return False
 
          return True
       return filter_func
@@ -95,7 +107,7 @@ class Filter:
          try:
             pos = sol.index(c)
          except ValueError:
-            if not c in include:
+            if include[i] != c:
                exclude[i] = c.lower()
             continue
          include[i] = c.lower()
@@ -171,7 +183,7 @@ class Filter:
          ("ab__K^__am_", "BREAK", True),
          ("ab_m_^__a_k", "BREAM", True),
          
-         ("BREA_^____d", "BREAD", True),
+         ("BREA_^____d", "BREAD", False),
          ("BREA_^____d", "BREAK", True),
          ("BREA_^____d", "BREAM", True),
       ]
