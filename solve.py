@@ -5,7 +5,7 @@ import sys
 import time
 from optparse import OptionParser
 
-from filter import Filter, EXCLUSION_CHAR
+from filter import Filter, EXCLUSION_CHAR, EMPTY_FILTER
 from guess_set import Guess, GuessSet
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -92,19 +92,13 @@ class Solutions:
             break
       return guess_set
 
-   def find_best_guess(self, solutions: list[str], hint_best: GuessSet = None, hard_mode: bool = False, reverse: bool = False) -> tuple[GuessSet, float]:
+   def find_best_guess(self, hint_best: GuessSet = None, hard_mode: bool = False, reverse: bool = False) -> tuple[GuessSet, float]:
       start_time = time.perf_counter()
 
+      solutions = self.filtered_sols
       num_sols =  len(solutions)
       if num_sols == 0:
          raise ValueError("No solutions left to guess from")
-      elif num_sols == 1:
-         # Only one solution left, return it as the best guess
-         guess_str = solutions[0]
-         guess_set = GuessSet(guess_str, 1, is_in_tot_sol_set=guess_str in self.all_solutions, is_in_remaining_sol_set=guess_str in self.filtered_sols)
-         guess_set.remaining_cnt = 0
-         guess_set.remaining_avg = 0.0
-         return (guess_set, time.perf_counter() - start_time)
 
       # In hard mode, guesses must themselves satisfy all known clues.
       guess_list = solutions if hard_mode else self.all_guesses
@@ -117,45 +111,19 @@ class Solutions:
       # solution set once for every possible hint.
       best_guess = hint_best
       best_score = hint_best.remaining_cnt if hint_best is not None else sys.maxsize
-      filtered_sols = self.filtered_sols
 
       last_time = start_time
       for i, guess_str in enumerate(guess_list):
-         partition_counts = {}
-         for maybe_sol in filtered_sols:
-            hint = Filter.make_hint(guess_str, maybe_sol)
-            if hint.is_match(guess_str):
-               continue
-            key = str(hint)
-            partition_counts[key] = partition_counts.get(key, 0) + 1
+         new_guess = self.try_guess(guess_str, best_score)
+         new_guess.is_in_remaining_sol_set = guess_str in solutions
 
-         score = sum(count * count for count in partition_counts.values())
-         guess_set = GuessSet(guess_str, len(filtered_sols), guess_str in self.all_solutions, guess_str in self.filtered_sols)
-         guess_set.remaining_cnt = score
-         guess_set.remaining_avg = score / len(filtered_sols)
-         percent_complete = 100.0*(i+1)/tot_guesses
-         loop_done_time = time.perf_counter()
-         time_remaining = (loop_done_time - start_time) * (tot_guesses - i - 1) / (i + 1)
+         if new_guess.is_better_than(best_guess):
+            print(f"Best guess {new_guess.to_str()}: expected solutions remaining {new_guess.remaining_avg:.2f} on average from {new_guess.remaining_cnt}/{num_sols}")
+            best_score = new_guess.remaining_cnt
+            best_guess = new_guess
          
-         if guess_set.remaining_cnt < best_score:
-            best_score = guess_set.remaining_cnt
-            best_guess = guess_set
-            if self.verbose >= 1:
-               print(f"[{percent_complete:.2f}% after {loop_done_time - start_time:.2f}s done in {time_remaining:.2f}s] Best guess {best_guess.to_str()}: expected solutions remaining {best_guess.remaining_avg:.2f} on average from {best_guess.remaining_cnt}/{tot_guesses}")
-            last_time = loop_done_time
-         elif guess_set.guess_str != best_guess.guess_str:
-            if guess_set.is_better_than(best_guess):
-               best_guess = guess_set
-               if self.verbose >= 1:
-                  print(f"[{percent_complete:.2f}% after {loop_done_time - start_time:.2f}s done in {time_remaining:.2f}s] TIED guess {best_guess.to_str()}: expected solutions remaining {best_guess.remaining_avg:.2f} on average from {best_guess.remaining_cnt}/{tot_guesses}")
-               last_time = loop_done_time
+      return (best_guess, time.perf_counter() - start_time)
 
-            if self.verbose >= 2:
-               print(f"Guess {guess_str} score of {guess_set.remaining_avg:.2f} with {tot_guesses} solutions")
-            elif self.verbose >= 1 and loop_done_time - last_time >= 5.0:
-               print(f"[{percent_complete:.2f}% after {loop_done_time - start_time:.2f}s done in {time_remaining:.2f}s] Best guess is still {best_guess.to_str()} {best_guess.remaining_avg:.2f} (last guess was {guess_str} {guess_set.remaining_avg:.2f})")
-               last_time = loop_done_time
-      return (best_guess, loop_done_time - start_time)
 
    def unit_tests(self):
       # Test the filter function
@@ -233,15 +201,15 @@ if __name__ == "__main__":
             hint_obj = sols.try_guess(options.hint_best)
             print(f"Hinted best guess {options.hint_best}: expected solutions remaining {hint_obj.remaining_avg:.2f} on average from {hint_obj.remaining_cnt}/{num_sols}")
 
-         best_guess, elapsed = sols.find_best_guess(sols.filtered_sols, hard_mode=options.hard_mode, hint_best=hint_obj, reverse=options.reverse)
+         best_guess, elapsed = sols.find_best_guess(hard_mode=options.hard_mode, hint_best=hint_obj, reverse=options.reverse)
          print(f"Time taken: {elapsed:.2f} seconds")
          if best_guess.guess_str not in sols.all_solutions:
             print(f"WARNING: Best guess {best_guess.to_str()} is not in the solutions file!")
          print(f"Best guess {best_guess.to_str()}: expected solutions remaining {best_guess.remaining_avg:.2f} on average from {best_guess.remaining_cnt}/{num_sols}")
 
       if sols.verbose >= 2 or len(sols) < 30:
-         for guess_obj in sols.try_guess(best_guess.guess_str).guesses:
+         for guess_obj in best_guess.guesses:
             if guess_obj.hint.is_match(best_guess.guess_str):
                print(f"   Solution: {guess_obj.maybe_sol} Hint: {guess_obj.hint} SUCCESS")
-               continue
-            print(f"   Solution: {guess_obj.maybe_sol} Hint: {guess_obj.hint} {guess_obj.remaining_cnt} remaining solutions {guess_obj.remaining_sol_set}")
+            else:
+               print(f"   Solution: {guess_obj.maybe_sol} Hint: {guess_obj.hint} {guess_obj.remaining_cnt} remaining solutions {guess_obj.remaining_sol_set}")

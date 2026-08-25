@@ -51,9 +51,7 @@ class Filter:
       else:
          raise ValueError(f"Invalid filter string {filter_str}")
 
-   @classmethod
-   def make_filter_func(cls, filter_str: str):
-      filter = Filter.make_filter(filter_str)
+   def make_filter_func_int(self):
 
       def filter_func(maybe_sol: str) -> bool:
          assert maybe_sol.isalpha(), f"Possible solution {maybe_sol} is not alphabetic"
@@ -63,14 +61,14 @@ class Filter:
          sol_list = list(maybe_sol)
 
          # Loop through the filter known positions
-         for i, include_char in enumerate(filter.include):
+         for i, include_char in enumerate(self.include):
             if include_char != UNKNOWN_CHAR and include_char.isupper():
                if sol_list[i] != include_char:
                   return False
                sol_list[i] = UNKNOWN_CHAR
 
          # Loop through the filter unknown positions
-         for i, include_char in enumerate(filter.include):
+         for i, include_char in enumerate(self.include):
             if include_char != UNKNOWN_CHAR and include_char.islower():
                up_ch = include_char.upper()
                if sol_list[i] == up_ch:
@@ -83,7 +81,7 @@ class Filter:
                sol_list[pos] = UNKNOWN_CHAR
 
          # Loop through the filter exclusions
-         for i, exclude_char in enumerate(filter.exclude):
+         for i, exclude_char in enumerate(self.exclude):
             if exclude_char != UNKNOWN_CHAR:
                up_ch = exclude_char.upper()
                if up_ch in sol_list:
@@ -91,6 +89,12 @@ class Filter:
 
          return True
       return filter_func
+   
+   @classmethod
+   def make_filter_func(cls, filter_str: str):
+      filter = Filter.make_filter(filter_str)
+
+      return filter.make_filter_func_int()
    
    @classmethod
    def make_hint(cls, guess: str, solution: str) -> "Filter":
