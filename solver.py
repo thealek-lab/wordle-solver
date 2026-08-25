@@ -10,6 +10,7 @@ class Solver:
    def __init__(self, solution_file_name: str = DEFAULT_SOLUTIONS_FILE, guesses_file_name: str = DEFAULT_GUESSES_FILE, verbosity: int = 1):
       if verbosity >= 2:
          print(f"Creating Solver with guesses {guesses_file_name}")
+
       self.verbosity = verbosity
       all_solutions = []
       with open(solution_file_name) as f:
@@ -112,7 +113,8 @@ class Solver:
       if hint_best is None:
          best_guess = self.try_guess(solutions[0])
          best_guess.is_in_remaining_sol_set = True
-         print(f"Initial guess {best_guess.to_str()}: expected solutions remaining {best_guess.remaining_avg:.2f} on average from {best_guess.remaining_cnt}/{num_sols}")
+         if self.verbosity >=1:
+            print(f"Initial guess {best_guess.to_str()}: expected solutions remaining {best_guess.remaining_avg:.2f} on average from {best_guess.remaining_cnt}/{num_sols}")
       best_score = best_guess.remaining_cnt
 
       last_time = start_time
@@ -124,7 +126,7 @@ class Solver:
          loop_done_time = time.perf_counter()
          time_remaining = (loop_done_time - start_time) * (tot_guesses - i - 1) / (i + 1)
 
-         if new_guess.is_better_than(best_guess):
+         if new_guess.is_better_than(best_guess, self.verbosity):
             best_score = new_guess.remaining_cnt
             best_guess = new_guess
             if self.verbosity >= 1:
@@ -133,7 +135,16 @@ class Solver:
          elif self.verbosity >= 1 and loop_done_time - last_time >= 5.0:
             print(f"[{percent_complete:.2f}% after {loop_done_time - start_time:.2f}s done in {time_remaining:.2f}s] Best guess is still {best_guess.to_str()} {best_guess.remaining_avg:.2f} (last guess was {guess_str} {new_guess.remaining_avg:.2f}+)")
             last_time = loop_done_time
-      return (best_guess, time.perf_counter() - start_time)
+            
+      elapsed = time.perf_counter() - start_time
+      
+      if self.verbosity >=1:
+         print(f"Time taken: {elapsed:.2f} seconds")
+         if best_guess.guess_str not in self.all_solutions:
+            print(f"WARNING: Best guess {best_guess.to_str()} is not in the solutions file!")
+         print(f"Best guess {best_guess.to_str()}: expected solutions remaining {best_guess.remaining_avg:.2f} on average from {best_guess.remaining_cnt}/{num_sols}")
+
+      return best_guess
 
 
    def unit_tests(self):

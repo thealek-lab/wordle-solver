@@ -40,13 +40,14 @@ if __name__ == "__main__":
       sols = Solver(opts.solutions_file, verbosity=0)
       sols.unit_tests()
       
+   verbosity = 2 if opts.verbose else 0 if opts.quiet else 1
+   opts.verbosity = verbosity
+
    if opts.simulate_game:
-      sim = GameSim(opts.simulate_game, opts)
+      sim = GameSim(opts.simulate_game, verbosity)
       sim.run()
       sys.exit(0)
       
-   verbosity = 2 if opts.verbose else 0 if opts.quiet else 1
-
    sols = Solver(opts.solutions_file, opts.guesses_file, verbosity=verbosity)
 
    if opts.hint_best and len(args) == 0:
@@ -80,11 +81,7 @@ if __name__ == "__main__":
             hint_obj.is_in_tot_sol_set = hint_obj.guess_str in sols.all_solutions
             print(f"Hinted best guess {hint_obj.to_str()}: expected solutions remaining {hint_obj.remaining_avg:.2f} on average from {hint_obj.remaining_cnt}/{num_sols}")
 
-         best_guess, elapsed = sols.find_best_guess(hard_mode=opts.hard_mode, hint_best=hint_obj, reverse=opts.reverse)
-         print(f"Time taken: {elapsed:.2f} seconds")
-         if best_guess.guess_str not in sols.all_solutions:
-            print(f"WARNING: Best guess {best_guess.to_str()} is not in the solutions file!")
-         print(f"Best guess {best_guess.to_str()}: expected solutions remaining {best_guess.remaining_avg:.2f} on average from {best_guess.remaining_cnt}/{num_sols}")
+         best_guess = sols.find_best_guess(hard_mode=opts.hard_mode, hint_best=hint_obj, reverse=opts.reverse)
 
       if sols.verbose >= 2 or len(sols) < 30:
          for guess_obj in best_guess.guesses:
