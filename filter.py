@@ -114,8 +114,9 @@ class Filter:
             if include[i] != c:
                exclude[i] = c.lower()
             continue
-         include[i] = c.lower()
-         sol[pos] = UNKNOWN_CHAR
+         if include[i] != c:
+            include[i] = c.lower()
+            sol[pos] = UNKNOWN_CHAR
 
       return Filter("".join(include), "".join(exclude))
 
