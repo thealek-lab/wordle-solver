@@ -120,7 +120,8 @@ impl Filter {
                         return false;
                     }
 
-                    let Some(position) = solution.iter().position(|&character| character == upper) else {
+                    let Some(position) = solution.iter().position(|&character| character == upper)
+                    else {
                         return false;
                     };
                     solution[position] = UNKNOWN_CHAR;
@@ -181,7 +182,9 @@ impl Filter {
 
         for index in 0..FILTER_LENGTH {
             let character = guess_chars[index];
-            let position = remaining.iter().position(|&candidate| candidate == character);
+            let position = remaining
+                .iter()
+                .position(|&candidate| candidate == character);
             match position {
                 Some(position) => {
                     if include[index] != character {
@@ -205,7 +208,10 @@ impl Filter {
 
     pub fn is_match(&self, guess_str: &str) -> bool {
         self.include.iter().collect::<String>() == guess_str
-            && self.exclude.iter().all(|&character| character == UNKNOWN_CHAR)
+            && self
+                .exclude
+                .iter()
+                .all(|&character| character == UNKNOWN_CHAR)
     }
 }
 
@@ -237,7 +243,10 @@ mod tests {
         ];
 
         for (guess, solution, expected) in test_cases {
-            assert_eq!(Filter::make_hint(guess, solution).unwrap().to_string(), expected);
+            assert_eq!(
+                Filter::make_hint(guess, solution).unwrap().to_string(),
+                expected
+            );
         }
     }
 
@@ -279,7 +288,11 @@ mod tests {
 
         for (filter_str, candidate, expected) in test_cases {
             let filter = Filter::make_filter(filter_str).unwrap();
-            assert_eq!(filter.make_filter_func()(candidate), expected, "Filter {filter_str}");
+            assert_eq!(
+                filter.make_filter_func()(candidate),
+                expected,
+                "Filter {filter_str}"
+            );
         }
     }
 }

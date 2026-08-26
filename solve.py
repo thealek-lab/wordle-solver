@@ -92,7 +92,7 @@ if __name__ == "__main__":
 
          best_guess = sols.find_best_guess(hard_mode=opts.hard_mode, hint_best=hint_obj, reverse=opts.reverse)
 
-      if sols.verbose >= 2 or len(sols) < 30:
+      if sols.verbosity >= 2 or len(sols) < 30:
          for guess_obj in best_guess.guesses:
             if guess_obj.hint.is_match(best_guess.guess_str):
                print(f"   Solution: {guess_obj.maybe_sol} Hint: {guess_obj.hint} SUCCESS")
