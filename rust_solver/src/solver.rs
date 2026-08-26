@@ -135,18 +135,18 @@ impl Solver {
     }
 
     fn score_guess(&self, guess_str: &str) -> Result<f64, String> {
-        let mut counts = BTreeMap::new();
+        let guess = word_bytes(guess_str)?;
+        let mut counts = [0usize; 243];
 
         for maybe_sol in &self.filtered_sols {
-            let hint = Filter::make_hint(guess_str, maybe_sol)?;
-            if !hint.is_match(guess_str) {
-                let key = hint.to_string();
-                *counts.entry(key).or_insert(0usize) += 1;
+            let pattern = feedback_key(&guess, maybe_sol.as_bytes());
+            if pattern != 242 {
+                counts[pattern as usize] += 1;
             }
         }
 
         Ok(counts
-            .values()
+            .iter()
             .map(|count| {
                 let count = *count as f64;
                 count * (0.5 + count / 2.0)
@@ -284,4 +284,39 @@ fn ensure_unique(words: &[String], kind: &str, file_name: &str) -> Result<(), St
 fn sorted(mut words: Vec<String>) -> Vec<String> {
     words.sort();
     words
+}
+
+fn word_bytes(word: &str) -> Result<[u8; 5], String> {
+    let bytes = word.as_bytes();
+    if bytes.len() != 5 || !bytes.iter().all(u8::is_ascii_alphabetic) {
+        return Err(format!("Word '{word}' is not a 5-letter alphabetic word"));
+    }
+    Ok([bytes[0], bytes[1], bytes[2], bytes[3], bytes[4]])
+}
+
+fn feedback_key(guess: &[u8; 5], solution: &[u8]) -> u16 {
+    let mut pattern = [0u8; 5];
+    let mut remaining = [true; 5];
+
+    for index in 0..5 {
+        if guess[index] == solution[index] {
+            pattern[index] = 2;
+            remaining[index] = false;
+        }
+    }
+
+    for index in 0..5 {
+        if pattern[index] == 0 {
+            if let Some(position) =
+                (0..5).find(|&position| remaining[position] && solution[position] == guess[index])
+            {
+                pattern[index] = 1;
+                remaining[position] = false;
+            }
+        }
+    }
+
+    pattern
+        .iter()
+        .fold(0u16, |key, &value| key * 3 + value as u16)
 }
