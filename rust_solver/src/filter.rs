@@ -170,8 +170,8 @@ impl Filter {
 
         let guess_chars = guess.chars().collect::<Vec<_>>();
         let mut remaining = solution.chars().collect::<Vec<_>>();
-        let mut include = vec![UNKNOWN_CHAR; FILTER_LENGTH];
-        let mut exclude = vec![UNKNOWN_CHAR; FILTER_LENGTH];
+        let mut include = [UNKNOWN_CHAR; FILTER_LENGTH];
+        let mut exclude = [UNKNOWN_CHAR; FILTER_LENGTH];
 
         for index in 0..FILTER_LENGTH {
             if guess_chars[index] == remaining[index] {

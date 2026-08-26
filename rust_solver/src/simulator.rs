@@ -57,7 +57,7 @@ impl GameSim {
                 guess_list.last().unwrap().0,
                 sols.len()
             );
-            if sols.len() > 0 && (self.verbosity >= 2 || sols.len() <= 10) {
+            if ! sols.is_empty() && (self.verbosity >= 2 || sols.len() <= 10) {
                 println!("   {:?}", sols.filtered_sols);
             }
             if sols.len() == 1 {
