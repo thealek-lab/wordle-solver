@@ -3,7 +3,7 @@ use std::io::Write;
 use std::time::Instant;
 
 use crate::filter::Filter;
-use crate::solver::{resolve_default_path, Solver, DEFAULT_GUESSES_FILE, DEFAULT_SOLUTIONS_FILE};
+use crate::solver::{DEFAULT_GUESSES_FILE, DEFAULT_SOLUTIONS_FILE, Solver, resolve_default_path};
 
 pub const BEST_INITIAL_GUESS: &str = "ROATE";
 
@@ -132,7 +132,10 @@ impl GameSim {
             let average = total_steps as f64 / (index + 1) as f64;
             let percent = 100.0 * (index + 1) as f64 / total as f64;
             let remaining = elapsed * (total - index - 1) as f64 / (index + 1) as f64;
-            println!("[{percent:.2}% after {elapsed:.2}s done in {remaining:.2}s] avg={average:.2}={total_steps}/{} ", index + 1);
+            println!(
+                "[{percent:.2}% after {elapsed:.2}s done in {remaining:.2}s] avg={average:.2}={total_steps}/{} ",
+                index + 1
+            );
         }
         Ok(())
     }

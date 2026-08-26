@@ -3,8 +3,8 @@ mod guess_set;
 mod simulator;
 mod solver;
 
-use simulator::{GameSim, BEST_INITIAL_GUESS};
-use solver::{resolve_default_path, Solver, DEFAULT_GUESSES_FILE, DEFAULT_SOLUTIONS_FILE};
+use simulator::{BEST_INITIAL_GUESS, GameSim};
+use solver::{DEFAULT_GUESSES_FILE, DEFAULT_SOLUTIONS_FILE, Solver, resolve_default_path};
 
 fn main() {
     if let Err(error) = run() {
@@ -52,7 +52,7 @@ fn run() -> Result<(), String> {
             "-r" | "--reverse" => reverse = true,
             "-h" | "--help" => return print_help(),
             argument if argument.starts_with('-') => {
-                return Err(format!("Unknown option {argument}"))
+                return Err(format!("Unknown option {argument}"));
             }
             filter => filters.push(filter.to_owned()),
         }

@@ -22,6 +22,7 @@ pub struct Solver {
     pub all_solutions: Vec<String>,
     pub filtered_sols: Vec<String>,
     pub all_guesses: Vec<String>,
+    all_solution_set: HashSet<String>,
 }
 
 impl Solver {
@@ -63,6 +64,7 @@ impl Solver {
         Ok(Self {
             verbosity,
             filtered_sols: all_solutions.clone(),
+            all_solution_set: all_solutions.iter().cloned().collect(),
             all_solutions,
             all_guesses,
         })
@@ -132,6 +134,26 @@ impl Solver {
         Ok(guess_set)
     }
 
+    fn score_guess(&self, guess_str: &str) -> Result<f64, String> {
+        let mut counts = BTreeMap::new();
+
+        for maybe_sol in &self.filtered_sols {
+            let hint = Filter::make_hint(guess_str, maybe_sol)?;
+            if !hint.is_match(guess_str) {
+                let key = hint.to_string();
+                *counts.entry(key).or_insert(0usize) += 1;
+            }
+        }
+
+        Ok(counts
+            .values()
+            .map(|count| {
+                let count = *count as f64;
+                count * (0.5 + count / 2.0)
+            })
+            .sum())
+    }
+
     pub fn find_best_guess(
         &self,
         hint_best: Option<GuessSet>,
@@ -168,22 +190,28 @@ impl Solver {
                 guess
             }
         };
-        let mut best_score = best_guess.remaining_cnt;
+        let remaining_set: HashSet<_> = self.filtered_sols.iter().collect();
         let mut last_report = start_time;
 
         for (index, guess_str) in guess_list.iter().enumerate() {
-            let new_guess = self.try_guess(guess_str, best_score)?;
-            let mut new_guess = new_guess;
-            new_guess.is_in_remaining_sol_set = self.filtered_sols.contains(guess_str);
-            new_guess.is_in_tot_sol_set = self.all_solutions.contains(guess_str);
+            let score = self.score_guess(guess_str)?;
+            let mut new_guess = GuessSet::new(
+                guess_str.clone(),
+                num_sols,
+                self.all_solution_set.contains(guess_str),
+                remaining_set.contains(guess_str),
+            );
+            new_guess.remaining_cnt = score;
+            new_guess.remaining_avg = score / num_sols as f64;
 
             let elapsed = start_time.elapsed().as_secs_f64();
             let percent_complete = 100.0 * (index + 1) as f64 / total_guesses as f64;
             let time_remaining = elapsed * (total_guesses - index - 1) as f64 / (index + 1) as f64;
 
             if new_guess.is_better_than(&best_guess, self.verbosity) {
-                best_score = new_guess.remaining_cnt;
-                best_guess = new_guess;
+                best_guess = self.try_guess(guess_str, score)?;
+                best_guess.is_in_remaining_sol_set = remaining_set.contains(guess_str);
+                best_guess.is_in_tot_sol_set = self.all_solution_set.contains(guess_str);
                 if self.verbosity >= 1 {
                     println!(
                         "[{percent_complete:.2}% after {elapsed:.2}s done in {time_remaining:.2}s] Best guess {}: expected solutions remaining {:.2} on average from {}/{}",
