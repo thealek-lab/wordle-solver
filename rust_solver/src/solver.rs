@@ -136,10 +136,13 @@ impl Solver {
 
     fn score_guess(&self, guess_str: &str) -> Result<f64, String> {
         let guess = word_bytes(guess_str)?;
+        // There are only 3^5 possible Wordle feedback patterns. Counting each
+        // pattern directly avoids allocating Filters, strings, or partitions.
         let mut counts = [0usize; 243];
 
         for maybe_sol in &self.filtered_sols {
             let pattern = feedback_key(&guess, maybe_sol.as_bytes());
+            // A perfect match leaves no remaining solutions and contributes 0.
             if pattern != 242 {
                 counts[pattern as usize] += 1;
             }
@@ -149,6 +152,9 @@ impl Solver {
             .iter()
             .map(|count| {
                 let count = *count as f64;
+                // A partition of size n contributes 0.5 + 1 + ... + n.
+                // This is the same expected remaining-solutions score used by
+                // GuessSet::add_guess, expressed without materializing guesses.
                 count * (0.5 + count / 2.0)
             })
             .sum())
