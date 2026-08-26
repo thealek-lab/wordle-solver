@@ -31,8 +31,7 @@ pub struct GuessSet {
     pub is_in_remaining_sol_set: bool,
     pub guesses: Vec<Guess>,
     pub num_sols: usize,
-    pub remaining_cnt: f64,
-    pub remaining_avg: f64,
+    pub entropy: f64,
 }
 
 impl GuessSet {
@@ -48,30 +47,20 @@ impl GuessSet {
             is_in_remaining_sol_set,
             guesses: Vec::new(),
             num_sols,
-            remaining_cnt: f64::MAX,
-            remaining_avg: f64::INFINITY,
+            entropy: 0.0,
         }
     }
 
     pub fn add_guess(&mut self, guess: Guess) {
         self.guesses.push(guess);
-        if self.remaining_cnt == f64::MAX {
-            self.remaining_cnt = 0.0;
-        }
-
-        let new_sols = self.guesses.last().unwrap().remaining_sol_set.len() as f64;
-        if new_sols > 0.0 {
-            self.remaining_cnt += 0.5 + new_sols / 2.0;
-        }
-        self.remaining_avg = self.remaining_cnt / self.num_sols as f64;
     }
 
     pub fn is_better_than(&self, other: &Self, verbosity: u32) -> bool {
-        if self.remaining_cnt < other.remaining_cnt {
+        if self.entropy > other.entropy {
             return true;
         }
 
-        if self.guess_str != other.guess_str && self.remaining_cnt == other.remaining_cnt {
+        if self.guess_str != other.guess_str && self.entropy == other.entropy {
             if self.is_in_remaining_sol_set && !other.is_in_remaining_sol_set {
                 if verbosity >= 1 {
                     println!(
@@ -134,8 +123,7 @@ mod tests {
         let mut other_guess = GuessSet::new("audio".to_owned(), 2, false, false);
         other_guess.add_guess(guess("audio", &["crane", "slate"]));
 
-        assert_eq!(remaining_guess.remaining_cnt, 1.5);
-        assert_eq!(remaining_guess.remaining_avg, 0.75);
+        assert_eq!(remaining_guess.entropy, 0.75);
         assert_eq!(remaining_guess.to_string(), "raise+");
         assert!(remaining_guess.is_better_than(&other_guess, 0));
         assert_eq!(other_guess.to_string(), "audio*");

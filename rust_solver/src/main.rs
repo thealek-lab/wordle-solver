@@ -105,8 +105,8 @@ fn run() -> Result<(), String> {
         guess.is_in_remaining_sol_set = solver.filtered_sols.contains(&guess.guess_str);
         guess.is_in_tot_sol_set = solver.all_solutions.contains(&guess.guess_str);
         println!(
-            "Forced guess {}: expected solutions remaining {:.2} on average from {}/{}",
-            guess, guess.remaining_avg, guess.remaining_cnt, num_sols
+            "Forced guess {}: entropy {:.2} over {num_sols}",
+            guess, guess.entropy
         );
         guess
     } else {
@@ -115,8 +115,8 @@ fn run() -> Result<(), String> {
             guess.is_in_remaining_sol_set = solver.filtered_sols.contains(&guess.guess_str);
             guess.is_in_tot_sol_set = solver.all_solutions.contains(&guess.guess_str);
             println!(
-                "Hinted best guess {}: expected solutions remaining {:.2} on average from {}/{}",
-                guess, guess.remaining_avg, guess.remaining_cnt, num_sols
+                "Hinted best guess {}: entropy {:.2} over {num_sols}",
+                guess, guess.entropy
             );
             Some(guess)
         } else {

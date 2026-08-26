@@ -88,11 +88,7 @@ impl Solver {
         Ok(())
     }
 
-    pub fn try_guess(
-        &self,
-        guess_str: &str,
-        lowest_remaining_cnt: f64,
-    ) -> Result<GuessSet, String> {
+    pub fn try_guess(&self, guess_str: &str, entropy: f64) -> Result<GuessSet, String> {
         let mut partitions: BTreeMap<String, Vec<String>> = BTreeMap::new();
         let mut hints = Vec::with_capacity(self.filtered_sols.len());
 
@@ -109,6 +105,7 @@ impl Solver {
 
         let mut guess_set =
             GuessSet::new(guess_str.to_owned(), self.filtered_sols.len(), true, false);
+        guess_set.entropy = entropy;
         for (maybe_sol, hint) in hints {
             let remaining = if hint.is_match(guess_str) {
                 Vec::new()
@@ -126,10 +123,6 @@ impl Solver {
                 );
             }
             guess_set.add_guess(guess);
-
-            if guess_set.remaining_cnt > lowest_remaining_cnt {
-                break;
-            }
         }
         Ok(guess_set)
     }
@@ -140,6 +133,7 @@ impl Solver {
         // pattern directly avoids allocating Filters, strings, or partitions.
         let mut counts = [0usize; 243];
 
+        let num_sols = self.filtered_sols.len() as f64;
         for maybe_sol in &self.filtered_sols {
             let pattern = feedback_key(&guess, maybe_sol.as_bytes());
             // A perfect match leaves no remaining solutions and contributes 0.
@@ -152,10 +146,12 @@ impl Solver {
             .iter()
             .map(|count| {
                 let count = *count as f64;
-                // A partition of size n contributes 0.5 + 1 + ... + n.
-                // This is the same expected remaining-solutions score used by
-                // GuessSet::add_guess, expressed without materializing guesses.
-                count * (0.5 + count / 2.0)
+                if count == 0.0 {
+                    0.0
+                } else {
+                    let probability = count / num_sols;
+                    -probability * probability.log2()
+                }
             })
             .sum())
     }
@@ -185,12 +181,12 @@ impl Solver {
         let mut best_guess = match hint_best {
             Some(guess) => guess,
             None => {
-                let mut guess = self.try_guess(&self.filtered_sols[0], f64::MAX)?;
+                let mut guess = self.try_guess(&self.filtered_sols[0], 0.0)?;
                 guess.is_in_remaining_sol_set = true;
                 if self.verbosity >= 1 {
                     println!(
-                        "Initial guess {}: expected solutions remaining {:.2} on average from {}/{}",
-                        guess, guess.remaining_avg, guess.remaining_cnt, num_sols
+                        "Initial guess {}: entropy {:.2} over {}",
+                        guess, guess.entropy, num_sols
                     );
                 }
                 guess
@@ -207,8 +203,7 @@ impl Solver {
                 self.all_solution_set.contains(guess_str),
                 remaining_set.contains(guess_str),
             );
-            new_guess.remaining_cnt = score;
-            new_guess.remaining_avg = score / num_sols as f64;
+            new_guess.entropy = score;
 
             let elapsed = start_time.elapsed().as_secs_f64();
             let percent_complete = 100.0 * (index + 1) as f64 / total_guesses as f64;
@@ -220,15 +215,15 @@ impl Solver {
                 best_guess.is_in_tot_sol_set = self.all_solution_set.contains(guess_str);
                 if self.verbosity >= 1 {
                     println!(
-                        "[{percent_complete:.2}% after {elapsed:.2}s done in {time_remaining:.2}s] Best guess {}: expected solutions remaining {:.2} on average from {}/{}",
-                        best_guess, best_guess.remaining_avg, best_guess.remaining_cnt, num_sols
+                        "[{percent_complete:.2}% after {elapsed:.2}s done in {time_remaining:.2}s] Best guess {}: entropy {:.2} over {}",
+                        best_guess, best_guess.entropy, num_sols
                     );
                 }
                 last_report = Instant::now();
             } else if self.verbosity >= 1 && last_report.elapsed().as_secs_f64() >= 5.0 {
                 println!(
                     "[{percent_complete:.2}% after {elapsed:.2}s done in {time_remaining:.2}s] Best guess is still {} {:.2} (last guess was {} {:.2}+)",
-                    best_guess, best_guess.remaining_avg, guess_str, new_guess.remaining_avg
+                    best_guess, best_guess.entropy, guess_str, new_guess.entropy
                 );
                 last_report = Instant::now();
             }
@@ -244,8 +239,8 @@ impl Solver {
                 );
             }
             println!(
-                "Best guess {}: expected solutions remaining {:.2} on average from {}/{}",
-                best_guess, best_guess.remaining_avg, best_guess.remaining_cnt, num_sols
+                "Best guess {}: entropy {:.2} over {}",
+                best_guess, best_guess.entropy, num_sols
             );
         }
 
