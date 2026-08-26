@@ -1,7 +1,22 @@
-[100.00% after 564.06s done in 0.00s] avg=3.62=11611/3209 
-Only one solution could not be found in 6 guesses: 
-    FAZED, 7, SLATE(140), RACED(27), GAWKY(11), FRUMP(3), FADED(2), FAXED(1), FAZED(*)
+# File: wordle_initial_guess_SLATE_results.txt
+# Total lines: 3213
+# Result lines: 3209
+# Average steps: 3.62
 
+# [100.00% after 564.06s done in 0.00s] avg=3.62=11611/3209 
+# Only one solution could not be found in 6 guesses: 
+#    FAZED, 7, SLATE(140), RACED(27), GAWKY(11), FRUMP(3), FADED(2), FAXED(1), FAZED(*)
+#
+# Results grouped by steps:
+#   Steps   Solutions   Percent
+#       2          90     2.80%
+#       3        1358    42.32%
+#       4        1484    46.24%
+#       5         242     7.54%
+#       6          34     1.06%
+#       7           1     0.03%
+#   Total        3209   100.00%
+  
 ABACK, 3, SLATE(60), CHURN(1), ABACK(*)
 ABASE, 3, SLATE(6), CEASE(2), ABASE(1)
 ABASH, 3, SLATE(14), BRUGH(1), ABASH(*)

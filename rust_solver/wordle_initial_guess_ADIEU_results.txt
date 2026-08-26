@@ -1,6 +1,6 @@
-[100.00% after 433.46s done in 0.00s] avg=3.79=12166/3209 
-Only one solution could not be found in 6 guesses: 
-    OOZED, 7, ADIEU(109), PROWL(28), NOTCH(10), MUDDY(3), BOXED(2), JOKED(1), OOZED(*)
+# [100.00% after 433.46s done in 0.00s] avg=3.79=12166/3209 
+# Only one solution could not be found in 6 guesses: 
+#    OOZED, 7, ADIEU(109), PROWL(28), NOTCH(10), MUDDY(3), BOXED(2), JOKED(1), OOZED(*)
 
 ABACK, 4, ADIEU(54), TRONS(5), AMPLY(1), ABACK(*)
 ABASE, 3, ADIEU(26), PRANG(4), ABASE(1)

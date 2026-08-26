@@ -1,7 +1,7 @@
-[100.00% after 757.28s done in 0.00s] avg=4.05=13009/3209 
-Two solutions could not be found in 6 guesses: 
-    JOKER, 7, TIZZY(1278), ARLES(57), POWND(10), VUGHS(3), BOXER(2), CORER(1), JOKER(*)
-    ROVER, 7, TIZZY(1278), ARLES(57), POWND(10), VUGHS(3), COVER(2), MOVER(1), ROVER(*)
+# [100.00% after 757.28s done in 0.00s] avg=4.05=13009/3209 
+# Two solutions could not be found in 6 guesses: 
+#     JOKER, 7, TIZZY(1278), ARLES(57), POWND(10), VUGHS(3), BOXER(2), CORER(1), JOKER(*)
+#     ROVER, 7, TIZZY(1278), ARLES(57), POWND(10), VUGHS(3), COVER(2), MOVER(1), ROVER(*)
 
 ABACK, 4, TIZZY(1278), ARLES(6), ADOBO(1), ABACK(*)
 ABASE, 3, TIZZY(1278), ARLES(3), ABASE(1)
