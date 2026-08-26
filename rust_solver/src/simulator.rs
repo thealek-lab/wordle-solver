@@ -1,4 +1,5 @@
-use std::fs::File;
+use std::collections::HashSet;
+use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::time::Instant;
 
@@ -27,68 +28,63 @@ impl GameSim {
         let start_time = Instant::now();
         let solutions_file = resolve_default_path(DEFAULT_SOLUTIONS_FILE);
         let guesses_file = resolve_default_path(DEFAULT_GUESSES_FILE);
-        let mut sols = Solver::new(&solutions_file, &guesses_file, self.verbosity)?;
-        if !sols.all_solutions.contains(&self.solution) {
+        let mut solver = Solver::new(&solutions_file, &guesses_file, self.verbosity)?;
+        if !solver.all_solutions.contains(&self.solution) {
             return Err(format!(
                 "Invalid solution {} is not in the official list!",
                 self.solution
             ));
         }
-
         let initial_guess = initial_guess.to_uppercase();
         let mut hints = vec![Filter::make_hint(&initial_guess, &self.solution)?.to_string()];
-        sols.filter(&hints)?;
-        let mut guess_list = vec![(initial_guess.clone(), sols.len().to_string())];
+        solver.filter(&hints)?;
+        let mut guesses = vec![(initial_guess.clone(), solver.len().to_string())];
         println!(
             "After first guess {initial_guess} Solutions: {}",
-            sols.len()
+            solver.len()
         );
-
-        while !sols.is_empty() {
-            let best_guess = sols.find_best_guess(None, false, false)?;
-            let hint = Filter::make_hint(&best_guess.guess_str, &self.solution)?.to_string();
-            hints.push(hint);
-            sols.filter(&hints)?;
-            guess_list.push((best_guess.guess_str, sols.len().to_string()));
-
+        while !solver.is_empty() {
+            let best = solver.find_best_guess(None, false, false)?;
+            hints.push(Filter::make_hint(&best.guess_str, &self.solution)?.to_string());
+            solver.filter(&hints)?;
+            guesses.push((best.guess_str, solver.len().to_string()));
             println!(
                 "After guess {} {} Solutions: {}",
-                guess_list.len(),
-                guess_list.last().unwrap().0,
-                sols.len()
+                guesses.len(),
+                guesses.last().unwrap().0,
+                solver.len()
             );
-            if !sols.is_empty() && (self.verbosity >= 2 || sols.len() <= 10) {
-                println!("   {:?}", sols.filtered_sols);
+            if !solver.is_empty() && (self.verbosity >= 2 || solver.len() <= 10) {
+                println!("   {:?}", solver.filtered_sols);
             }
-            if sols.len() == 1 {
-                let single_sol = sols.filtered_sols[0].clone();
-                if guess_list.last().unwrap().0 != single_sol {
-                    guess_list.push((single_sol, "*".to_owned()));
+            if solver.len() == 1 {
+                let solution = solver.filtered_sols[0].clone();
+                if guesses.last().unwrap().0 != solution {
+                    guesses.push((solution, "*".to_owned()));
                 }
                 break;
             }
-            if guess_list.len() >= 7 {
+            if guesses.len() >= 7 {
                 break;
             }
         }
-
         let elapsed = start_time.elapsed().as_secs_f64();
-        let found = guess_list
+        if guesses
             .last()
             .map(|guess| guess.0 == self.solution)
-            .unwrap_or(false);
-        if found {
+            .unwrap_or(false)
+        {
             println!(
                 "Found solution {:?} in {} steps after {elapsed:.2}s!",
-                guess_list.last().unwrap(),
-                guess_list.len()
+                guesses.last().unwrap(),
+                guesses.len()
             );
-            Ok(guess_list)
+            Ok(guesses)
         } else {
             Err(format!(
                 "Cannot find solution {}: best guess {:?}!",
                 self.solution,
-                guess_list.last()
+                guesses.last()
             ))
         }
     }
@@ -97,46 +93,101 @@ impl GameSim {
         initial_guess: &str,
         verbosity: u32,
     ) -> Result<(), String> {
+        Self::calculate_initial_guess_performance_from(initial_guess, verbosity, None)
+    }
+
+    pub fn calculate_initial_guess_performance_from(
+        initial_guess: &str,
+        verbosity: u32,
+        resume_file: Option<&str>,
+    ) -> Result<(), String> {
         let initial_guess = initial_guess.to_uppercase();
         let solutions_file = resolve_default_path(DEFAULT_SOLUTIONS_FILE);
         let guesses_file = resolve_default_path(DEFAULT_GUESSES_FILE);
-        let sols = Solver::new(&solutions_file, &guesses_file, verbosity)?;
-        if !sols.all_guesses.contains(&initial_guess) {
+        let solver = Solver::new(&solutions_file, &guesses_file, verbosity)?;
+        if !solver.all_guesses.contains(&initial_guess) {
             return Err(format!(
                 "Initial guess '{initial_guess}' is not in guess list!"
             ));
         }
-
-        let file_name = format!("wordle_initial_guess_{initial_guess}_results.txt");
-        let mut file = File::create(&file_name)
-            .map_err(|error| format!("Could not create {file_name}: {error}"))?;
-        let total = sols.all_solutions.len();
+        let file_name = resume_file
+            .map(str::to_owned)
+            .unwrap_or_else(|| format!("wordle_initial_guess_{initial_guess}_results.txt"));
+        let (completed, mut total_steps) = match resume_file {
+            Some(path) => read_completed_results(path, &solver.all_solutions)?,
+            None => (HashSet::new(), 0),
+        };
+        let mut output = if resume_file.is_some() {
+            OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(&file_name)
+        } else {
+            File::create(&file_name)
+        }
+        .map_err(|error| format!("Could not open {file_name}: {error}"))?;
+        let total = solver.all_solutions.len();
         let start_time = Instant::now();
-        let mut total_steps = 0;
-
-        for (index, solution) in sols.all_solutions.iter().enumerate() {
+        let mut completed_count = completed.len();
+        for solution in &solver.all_solutions {
+            if completed.contains(solution) {
+                continue;
+            }
             println!("Testing solution {solution}");
-            let sim = Self::new(solution, verbosity);
-            let guesses = sim.run(&initial_guess)?;
-            total_steps += guesses.len();
-            let mut line = format!("{solution}, {}", guesses.len());
-            for (guess, count) in guesses {
+            let result = Self::new(solution, verbosity).run(&initial_guess)?;
+            total_steps += result.len();
+            let mut line = format!("{solution}, {}", result.len());
+            for (guess, count) in result {
                 line.push_str(&format!(", {guess}({count})"));
             }
-            writeln!(file, "{line}")
+            writeln!(output, "{line}")
                 .map_err(|error| format!("Could not write {file_name}: {error}"))?;
-            file.flush()
+            output
+                .flush()
                 .map_err(|error| format!("Could not flush {file_name}: {error}"))?;
-
+            completed_count += 1;
             let elapsed = start_time.elapsed().as_secs_f64();
-            let average = total_steps as f64 / (index + 1) as f64;
-            let percent = 100.0 * (index + 1) as f64 / total as f64;
-            let remaining = elapsed * (total - index - 1) as f64 / (index + 1) as f64;
+            let average = total_steps as f64 / completed_count as f64;
+            let percent = 100.0 * completed_count as f64 / total as f64;
+            let remaining = elapsed * (total - completed_count) as f64 / completed_count as f64;
             println!(
-                "[{percent:.2}% after {elapsed:.2}s done in {remaining:.2}s] avg={average:.2}={total_steps}/{} ",
-                index + 1
+                "[{percent:.2}% after {elapsed:.2}s done in {remaining:.2}s] avg={average:.2}={total_steps}/{completed_count} "
             );
         }
         Ok(())
     }
+}
+
+fn read_completed_results(
+    file_name: &str,
+    all_solutions: &[String],
+) -> Result<(HashSet<String>, usize), String> {
+    let contents = std::fs::read_to_string(file_name)
+        .map_err(|error| format!("Could not read resume file {file_name}: {error}"))?;
+    let solution_set: HashSet<_> = all_solutions.iter().collect();
+    let mut completed = HashSet::new();
+    let mut total_steps = 0;
+    for (line_number, line) in contents.lines().enumerate() {
+        let fields: Vec<_> = line.split(',').map(str::trim).collect();
+        if fields.len() < 2 {
+            return Err(format!(
+                "Invalid resume row {} in {file_name}",
+                line_number + 1
+            ));
+        }
+        let solution = fields[0].to_uppercase();
+        if !solution_set.contains(&solution) {
+            return Err(format!("Unknown solution '{solution}' in {file_name}"));
+        }
+        if !completed.insert(solution.clone()) {
+            return Err(format!("Duplicate solution '{solution}' in {file_name}"));
+        }
+        total_steps += fields[1].parse::<usize>().map_err(|error| {
+            format!(
+                "Invalid step count in resume row {}: {error}",
+                line_number + 1
+            )
+        })?;
+    }
+    Ok((completed, total_steps))
 }

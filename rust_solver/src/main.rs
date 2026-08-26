@@ -21,6 +21,7 @@ fn run() -> Result<(), String> {
     let mut hint_best = None;
     let mut force_guess = None;
     let mut calc_init = None;
+    let mut resume_file = None;
     let mut quiet = false;
     let mut verbose = false;
     let mut hard_mode = false;
@@ -45,6 +46,7 @@ fn run() -> Result<(), String> {
             "-b" | "--hint-best" => hint_best = Some(value(argument)?.to_uppercase()),
             "-f" | "--force-guess" => force_guess = Some(value(argument)?.to_uppercase()),
             "-c" | "--calc-init-guess" => calc_init = Some(value(argument)?.to_uppercase()),
+            "--resume" => resume_file = Some(value(argument)?),
             "-q" | "--quiet" => quiet = true,
             "-v" | "--verbose" => verbose = true,
             "--hard-mode" => hard_mode = true,
@@ -72,7 +74,11 @@ fn run() -> Result<(), String> {
         1
     };
     if let Some(initial_guess) = calc_init {
-        return GameSim::calculate_initial_guess_performance(&initial_guess, verbosity);
+        return GameSim::calculate_initial_guess_performance_from(
+            &initial_guess,
+            verbosity,
+            resume_file.as_deref(),
+        );
     }
     if let Some(solution) = simulate_game {
         return GameSim::new(&solution, verbosity)
@@ -145,6 +151,7 @@ fn print_help() -> Result<(), String> {
     println!("  -b, --hint-best WORD        seed the best-guess search");
     println!("  -f, --force-guess WORD      score a specific guess");
     println!("  -c, --calc-init-guess WORD  calculate initial-guess performance");
+    println!("      --resume FILE           continue an existing performance output");
     println!("  -q, --quiet                 reduce output");
     println!("  -v, --verbose               increase output");
     println!("      --hard-mode             only use remaining solutions as guesses");
