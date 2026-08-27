@@ -109,6 +109,7 @@ impl Solver {
 
         let mut best_entropy = 0.0;
         let mut best_guess = "<None>".to_string();
+        let mut best_in_sols = false;
         for guess in guess_list {
             let guess_bytes = guess
                 .as_bytes()
@@ -131,10 +132,12 @@ impl Solver {
             if entropy > best_entropy {
                 best_entropy = entropy;
                 best_guess = guess.clone();
+                best_in_sols = self.filtered_sols.contains(&best_guess);
             } else if entropy == best_entropy {
-                if self.filtered_sols.contains(guess) {
+                if !best_in_sols && self.filtered_sols.contains(guess) {
                     best_entropy = entropy;
                     best_guess = guess.clone();
+                    best_in_sols = true;
                 }
             }
         }
