@@ -1,5 +1,4 @@
 mod filter;
-mod guess_set;
 mod simulator;
 mod solver;
 
@@ -103,7 +102,7 @@ fn run() -> Result<(), String> {
     let best_list = solver.find_best_guess(hard_mode, reverse)?;
     print!("Best guesses: ");
     for guess in best_list.into_iter().take(10) {
-        print!("{}({:.2}), ", guess.2, guess.0);
+        print!("{}({:.2}), ", guess.0, guess.1);
     }
     println!();
 

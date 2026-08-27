@@ -205,14 +205,6 @@ impl Filter {
             &exclude.iter().collect::<String>(),
         )
     }
-
-    pub fn is_match(&self, guess_str: &str) -> bool {
-        self.include.iter().collect::<String>() == guess_str
-            && self
-                .exclude
-                .iter()
-                .all(|&character| character == UNKNOWN_CHAR)
-    }
 }
 
 impl std::fmt::Display for Filter {

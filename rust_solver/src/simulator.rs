@@ -46,9 +46,9 @@ impl GameSim {
         while !solver.is_empty() {
             let ranked_guesses = solver.find_best_guess(false, false)?;
             let best = &ranked_guesses[0];
-            hints.push(Filter::make_hint(&best.2, &self.solution)?.to_string());
+            hints.push(Filter::make_hint(&best.0, &self.solution)?.to_string());
             solver.filter(&hints)?;
-            guesses.push((best.2.clone(), solver.len().to_string()));
+            guesses.push((best.0.clone(), solver.len().to_string()));
             println!(
                 "After guess {} {} Solutions: {}",
                 guesses.len(),
@@ -88,13 +88,6 @@ impl GameSim {
                 guesses.last()
             ))
         }
-    }
-
-    pub fn calculate_initial_guess_performance(
-        initial_guess: &str,
-        verbosity: u32,
-    ) -> Result<(), String> {
-        Self::calculate_initial_guess_performance_from(initial_guess, verbosity, None)
     }
 
     pub fn calculate_initial_guess_performance_from(
