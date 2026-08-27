@@ -37,7 +37,7 @@ impl Solver {
         let all_solutions = sorted(all_solutions);
 
         let mut all_guesses = if guesses_file_name.is_empty() {
-            all_solutions.clone()
+            vec![]
         } else {
             read_words(guesses_file_name, false)?
         };
@@ -94,13 +94,17 @@ impl Solver {
             return Err("No solutions left to guess from".to_owned());
         }
 
-        let mut guess_list = if hard_mode {
-            self.filtered_sols.clone()
+        if num_sols == 1 {
+            return Ok(vec![(self.filtered_sols[0].clone(), 0.0)]);
+        }
+
+        let guess_list = if hard_mode {
+            &self.filtered_sols
         } else {
-            self.all_guesses.clone()
+            &self.all_guesses
         };
         if reverse {
-            guess_list.reverse();
+            //TBD guess_list.reverse();
         }
 
         let mut best_entropy = 0.0;

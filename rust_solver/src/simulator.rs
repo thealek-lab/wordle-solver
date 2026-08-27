@@ -27,7 +27,7 @@ impl GameSim {
     pub fn run(&self, initial_guess: &str) -> Result<Vec<(String, String)>, String> {
         let start_time = Instant::now();
         let solutions_file = resolve_default_path(DEFAULT_SOLUTIONS_FILE);
-        let guesses_file = resolve_default_path(DEFAULT_GUESSES_FILE);
+        let guesses_file = resolve_default_path(DEFAULT_SOLUTIONS_FILE);
         let mut solver = Solver::new(&solutions_file, &guesses_file, self.verbosity)?;
         if !solver.all_solutions.contains(&self.solution) {
             return Err(format!(
