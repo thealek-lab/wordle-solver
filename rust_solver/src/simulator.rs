@@ -44,10 +44,11 @@ impl GameSim {
             solver.len()
         );
         while !solver.is_empty() {
-            let best = solver.find_best_guess(None, false, false)?;
-            hints.push(Filter::make_hint(&best.guess_str, &self.solution)?.to_string());
+            let ranked_guesses = solver.find_best_guess(false, false)?;
+            let best = &ranked_guesses[0];
+            hints.push(Filter::make_hint(&best.2, &self.solution)?.to_string());
             solver.filter(&hints)?;
-            guesses.push((best.guess_str, solver.len().to_string()));
+            guesses.push((best.2.clone(), solver.len().to_string()));
             println!(
                 "After guess {} {} Solutions: {}",
                 guesses.len(),

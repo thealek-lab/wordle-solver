@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs;
 use std::path::Path;
 use std::time::Instant;
@@ -134,38 +134,11 @@ impl Solver {
         Ok(guess_set)
     }
 
-    fn score_guess(&self, guess_str: &str) -> Result<f64, String> {
-        let guess = word_bytes(guess_str)?;
-        // There are only 3^5 possible Wordle feedback patterns. Counting each
-        // pattern directly avoids allocating Filters, strings, or partitions.
-        let mut counts = [0usize; 243];
-
-        for maybe_sol in &self.filtered_sols {
-            let pattern = feedback_key(&guess, maybe_sol.as_bytes());
-            // A perfect match leaves no remaining solutions and contributes 0.
-            if pattern != 242 {
-                counts[pattern as usize] += 1;
-            }
-        }
-
-        Ok(counts
-            .iter()
-            .map(|count| {
-                let count = *count as f64;
-                // A partition of size n contributes 0.5 + 1 + ... + n.
-                // This is the same expected remaining-solutions score used by
-                // GuessSet::add_guess, expressed without materializing guesses.
-                count * (0.5 + count / 2.0)
-            })
-            .sum())
-    }
-
     pub fn find_best_guess(
         &self,
-        hint_best: Option<GuessSet>,
         hard_mode: bool,
         reverse: bool,
-    ) -> Result<GuessSet, String> {
+    ) -> Result<Vec<(f64, bool, String)>, String> {
         let start_time = Instant::now();
         let num_sols = self.filtered_sols.len();
         if num_sols == 0 {
@@ -180,76 +153,33 @@ impl Solver {
         if reverse {
             guess_list.reverse();
         }
-        let total_guesses = guess_list.len();
 
-        let mut best_guess = match hint_best {
-            Some(guess) => guess,
-            None => {
-                let mut guess = self.try_guess(&self.filtered_sols[0], f64::MAX)?;
-                guess.is_in_remaining_sol_set = true;
-                if self.verbosity >= 1 {
-                    println!(
-                        "Initial guess {}: expected solutions remaining {:.2} on average from {}/{}",
-                        guess, guess.remaining_avg, guess.remaining_cnt, num_sols
-                    );
-                }
-                guess
+        let mut ranked = vec![];
+        for guess in guess_list {
+            let guess_bytes = guess
+                .as_bytes()
+                .try_into()
+                .expect("Guess is not 5 characters long");
+            let mut buckets: HashMap<u16, usize> = HashMap::new();
+            for answer in &self.filtered_sols {
+                let feedback = feedback_key(guess_bytes, answer.as_bytes());
+                *buckets.entry(feedback).or_insert(0) += 1;
             }
-        };
-        let remaining_set: HashSet<_> = self.filtered_sols.iter().collect();
-        let mut last_report = start_time;
-
-        for (index, guess_str) in guess_list.iter().enumerate() {
-            let score = self.score_guess(guess_str)?;
-            let mut new_guess = GuessSet::new(
-                guess_str.clone(),
-                num_sols,
-                self.all_solution_set.contains(guess_str),
-                remaining_set.contains(guess_str),
-            );
-            new_guess.remaining_cnt = score;
-            new_guess.remaining_avg = score / num_sols as f64;
-
-            let elapsed = start_time.elapsed().as_secs_f64();
-            let percent_complete = 100.0 * (index + 1) as f64 / total_guesses as f64;
-            let time_remaining = elapsed * (total_guesses - index - 1) as f64 / (index + 1) as f64;
-
-            if new_guess.is_better_than(&best_guess, self.verbosity) {
-                best_guess = self.try_guess(guess_str, score)?;
-                best_guess.is_in_remaining_sol_set = remaining_set.contains(guess_str);
-                best_guess.is_in_tot_sol_set = self.all_solution_set.contains(guess_str);
-                if self.verbosity >= 1 {
-                    println!(
-                        "[{percent_complete:.2}% after {elapsed:.2}s done in {time_remaining:.2}s] Best guess {}: expected solutions remaining {:.2} on average from {}/{}",
-                        best_guess, best_guess.remaining_avg, best_guess.remaining_cnt, num_sols
-                    );
-                }
-                last_report = Instant::now();
-            } else if self.verbosity >= 1 && last_report.elapsed().as_secs_f64() >= 5.0 {
-                println!(
-                    "[{percent_complete:.2}% after {elapsed:.2}s done in {time_remaining:.2}s] Best guess is still {} {:.2} (last guess was {} {:.2}+)",
-                    best_guess, best_guess.remaining_avg, guess_str, new_guess.remaining_avg
-                );
-                last_report = Instant::now();
-            }
+            let entropy = buckets.values().fold(0.0, |total, &size| {
+                let probability = size as f64 / num_sols as f64;
+                total - probability * probability.log2()
+            });
+            ranked.push((entropy, self.filtered_sols.contains(&guess), guess.clone()));
         }
 
-        let elapsed = start_time.elapsed().as_secs_f64();
-        if self.verbosity >= 1 {
-            println!("Time taken: {elapsed:.2} seconds");
-            if !self.all_solutions.contains(&best_guess.guess_str) {
-                println!(
-                    "WARNING: Best guess {} is not in the solutions file!",
-                    best_guess
-                );
-            }
-            println!(
-                "Best guess {}: expected solutions remaining {:.2} on average from {}/{}",
-                best_guess, best_guess.remaining_avg, best_guess.remaining_cnt, num_sols
-            );
-        }
-
-        Ok(best_guess)
+        ranked.sort_by(|left, right| {
+            right
+                .0
+                .total_cmp(&left.0)
+                .then_with(|| right.1.cmp(&left.1))
+                .then_with(|| left.2.cmp(&right.2))
+        });
+        Ok(ranked)
     }
 }
 
@@ -290,14 +220,6 @@ fn ensure_unique(words: &[String], kind: &str, file_name: &str) -> Result<(), St
 fn sorted(mut words: Vec<String>) -> Vec<String> {
     words.sort();
     words
-}
-
-fn word_bytes(word: &str) -> Result<[u8; 5], String> {
-    let bytes = word.as_bytes();
-    if bytes.len() != 5 || !bytes.iter().all(u8::is_ascii_alphabetic) {
-        return Err(format!("Word '{word}' is not a 5-letter alphabetic word"));
-    }
-    Ok([bytes[0], bytes[1], bytes[2], bytes[3], bytes[4]])
 }
 
 fn feedback_key(guess: &[u8; 5], solution: &[u8]) -> u16 {

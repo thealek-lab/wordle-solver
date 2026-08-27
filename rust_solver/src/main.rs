@@ -100,46 +100,13 @@ fn run() -> Result<(), String> {
         println!("{:?}", solver.filtered_sols);
     }
 
-    let best_guess = if let Some(force) = force_guess {
-        let mut guess = solver.try_guess(&force, f64::MAX)?;
-        guess.is_in_remaining_sol_set = solver.filtered_sols.contains(&guess.guess_str);
-        guess.is_in_tot_sol_set = solver.all_solutions.contains(&guess.guess_str);
-        println!(
-            "Forced guess {}: expected solutions remaining {:.2} on average from {}/{}",
-            guess, guess.remaining_avg, guess.remaining_cnt, num_sols
-        );
-        guess
-    } else {
-        let hinted = if let Some(hint) = hint_best {
-            let mut guess = solver.try_guess(&hint, f64::MAX)?;
-            guess.is_in_remaining_sol_set = solver.filtered_sols.contains(&guess.guess_str);
-            guess.is_in_tot_sol_set = solver.all_solutions.contains(&guess.guess_str);
-            println!(
-                "Hinted best guess {}: expected solutions remaining {:.2} on average from {}/{}",
-                guess, guess.remaining_avg, guess.remaining_cnt, num_sols
-            );
-            Some(guess)
-        } else {
-            None
-        };
-        solver.find_best_guess(hinted, hard_mode, reverse)?
-    };
-
-    if solver.verbosity >= 2 || solver.len() < 30 {
-        for guess in best_guess.guesses {
-            if guess.hint.is_match(&best_guess.guess_str) {
-                println!(
-                    "   Solution: {} Hint: {} SUCCESS",
-                    guess.maybe_sol, guess.hint
-                );
-            } else {
-                println!(
-                    "   Solution: {} Hint: {} {} remaining solutions {:?}",
-                    guess.maybe_sol, guess.hint, guess.remaining_cnt, guess.remaining_sol_set
-                );
-            }
-        }
+    let best_list = solver.find_best_guess(hard_mode, reverse)?;
+    print!("Best guesses: ");
+    for guess in best_list.into_iter().take(10) {
+        print!("{}({:.2}), ", guess.2, guess.0);
     }
+    println!();
+
     Ok(())
 }
 
