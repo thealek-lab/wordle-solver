@@ -6,7 +6,7 @@ use std::time::Instant;
 use crate::filter::Filter;
 use crate::solver::{DEFAULT_GUESSES_FILE, DEFAULT_SOLUTIONS_FILE, Solver, resolve_default_path};
 
-pub const BEST_INITIAL_GUESS: &str = "ROATE";
+pub const BEST_INITIAL_GUESS: &str = "SLATE";
 
 pub struct GameSim {
     solution: String,

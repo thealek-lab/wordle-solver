@@ -131,6 +131,11 @@ impl Solver {
             if entropy > best_entropy {
                 best_entropy = entropy;
                 best_guess = guess.clone();
+            } else if entropy == best_entropy {
+                if self.filtered_sols.contains(guess) {
+                    best_entropy = entropy;
+                    best_guess = guess.clone();
+                }
             }
         }
 
