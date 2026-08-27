@@ -1,3 +1,19 @@
+File: wordle_initial_guess_SLATE_13K.txt
+Total lines: 3209
+Result lines: 3209
+Average steps: 3.60
+
+[100.00% after 482.36s done in 0.00s] avg=3.60=11554/3209 
+
+Results grouped by steps:
+  Steps   Solutions   Percent
+      2          70     2.18%
+      3        1367    42.60%
+      4        1559    48.58%
+      5         201     6.26%
+      6          12     0.37%
+  Total        3209   100.00%
+  
 ABACK, 3, SLATE(60), CHURN(1), ABACK(*)
 ABASE, 3, SLATE(6), ACHAR(1), ABASE(*)
 ABASH, 3, SLATE(14), BRUGH(1), ABASH(*)

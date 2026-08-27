@@ -3,7 +3,7 @@ Total lines: 3209
 Result lines: 3209
 Average steps: 3.61
 
-[100.00% after 95.12s done in 0.00s] avg=3.61=11596/3209 
+[100.00% after 27.01s done in 0.00s] avg=3.61=11596/3209
 
 Results grouped by steps:
   Steps   Solutions   Percent

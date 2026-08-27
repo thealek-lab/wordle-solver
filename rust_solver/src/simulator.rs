@@ -4,62 +4,72 @@ use std::io::Write;
 use std::time::Instant;
 
 use crate::filter::Filter;
-use crate::solver::{DEFAULT_GUESSES_FILE, DEFAULT_SOLUTIONS_FILE, Solver, resolve_default_path};
+use crate::solver::{DEFAULT_SOLUTIONS_FILE, Solver, resolve_default_path};
 
 pub const BEST_INITIAL_GUESS: &str = "SLATE";
 
 pub struct GameSim {
     solution: String,
     verbosity: u32,
+    solver: Solver,
 }
 
 impl GameSim {
-    pub fn new(solution: &str, verbosity: u32) -> Self {
+    pub fn new(solution: &str, guesses_file: &str, verbosity: u32) -> Result<Self, String> {
         if verbosity >= 2 {
             println!("Creating GameSim with hidden solution {solution}");
         }
-        Self {
-            solution: solution.to_uppercase(),
-            verbosity,
-        }
-    }
 
-    pub fn run(&self, initial_guess: &str) -> Result<Vec<(String, String)>, String> {
-        let start_time = Instant::now();
-        let solutions_file = resolve_default_path(DEFAULT_SOLUTIONS_FILE);
-        let guesses_file = resolve_default_path(DEFAULT_GUESSES_FILE);
-        let mut solver = Solver::new(&solutions_file, &guesses_file, self.verbosity)?;
-        if !solver.all_solutions.contains(&self.solution) {
+        let solution = solution.to_uppercase();
+
+        let solver = Solver::new(
+            &resolve_default_path(DEFAULT_SOLUTIONS_FILE),
+            &guesses_file,
+            verbosity,
+        )?;
+        if !solver.all_solutions.contains(&solution) {
             return Err(format!(
-                "Invalid solution {} is not in the official list!",
-                self.solution
+                "Invalid solution {solution} is not in the official list!"
             ));
         }
+
+        Ok(Self {
+            solution,
+            verbosity,
+            solver,
+        })
+    }
+
+    pub fn run(&mut self, initial_guess: &str) -> Result<Vec<(String, String)>, String> {
+        let start_time = Instant::now();
+
+        self.solver.filtered_sols = self.solver.all_solutions.clone();
+
         let initial_guess = initial_guess.to_uppercase();
         let mut hints = vec![Filter::make_hint(&initial_guess, &self.solution)?.to_string()];
-        solver.filter(&hints)?;
-        let mut guesses = vec![(initial_guess.clone(), solver.len().to_string())];
+        self.solver.filter(&hints)?;
+        let mut guesses = vec![(initial_guess.clone(), self.solver.len().to_string())];
         println!(
             "After first guess {initial_guess} Solutions: {}",
-            solver.len()
+            self.solver.len()
         );
-        while !solver.is_empty() {
-            let ranked_guesses = solver.find_best_guess(false, false)?;
+        while !self.solver.is_empty() {
+            let ranked_guesses = self.solver.find_best_guess(false, false)?;
             let best = &ranked_guesses[0];
             hints.push(Filter::make_hint(&best.0, &self.solution)?.to_string());
-            solver.filter(&hints)?;
-            guesses.push((best.0.clone(), solver.len().to_string()));
+            self.solver.filter(&hints)?;
+            guesses.push((best.0.clone(), self.solver.len().to_string()));
             println!(
                 "After guess {} {} Solutions: {}",
                 guesses.len(),
                 guesses.last().unwrap().0,
-                solver.len()
+                self.solver.len()
             );
-            if !solver.is_empty() && (self.verbosity >= 2 || solver.len() <= 10) {
-                println!("   {:?}", solver.filtered_sols);
+            if !self.solver.is_empty() && (self.verbosity >= 2 || self.solver.len() <= 10) {
+                println!("   {:?}", self.solver.filtered_sols);
             }
-            if solver.len() == 1 {
-                let solution = solver.filtered_sols[0].clone();
+            if self.solver.len() == 1 {
+                let solution = self.solver.filtered_sols[0].clone();
                 if guesses.last().unwrap().0 != solution {
                     guesses.push((solution, "*".to_owned()));
                 }
@@ -91,15 +101,13 @@ impl GameSim {
     }
 
     pub fn calculate_initial_guess_performance_from(
+        &mut self,
         initial_guess: &str,
-        verbosity: u32,
         resume_file: Option<&str>,
     ) -> Result<(), String> {
         let initial_guess = initial_guess.to_uppercase();
-        let solutions_file = resolve_default_path(DEFAULT_SOLUTIONS_FILE);
-        let guesses_file = resolve_default_path(DEFAULT_GUESSES_FILE);
-        let solver = Solver::new(&solutions_file, &guesses_file, verbosity)?;
-        if !solver.all_guesses.contains(&initial_guess) {
+
+        if !self.solver.all_guesses.contains(&initial_guess) {
             return Err(format!(
                 "Initial guess '{initial_guess}' is not in guess list!"
             ));
@@ -108,7 +116,7 @@ impl GameSim {
             .map(str::to_owned)
             .unwrap_or_else(|| format!("wordle_initial_guess_{initial_guess}_results.txt"));
         let (completed, mut total_steps) = match resume_file {
-            Some(path) => read_completed_results(path, &solver.all_solutions)?,
+            Some(path) => read_completed_results(path, &self.solver.all_solutions)?,
             None => (HashSet::new(), 0),
         };
         let mut output = if resume_file.is_some() {
@@ -120,15 +128,17 @@ impl GameSim {
             File::create(&file_name)
         }
         .map_err(|error| format!("Could not open {file_name}: {error}"))?;
-        let total = solver.all_solutions.len();
+        let total = self.solver.all_solutions.len();
         let start_time = Instant::now();
         let mut completed_count = completed.len();
-        for solution in &solver.all_solutions {
+        for solution in &self.solver.all_solutions.clone() {
             if completed.contains(solution) {
                 continue;
             }
             println!("Testing solution {solution}");
-            let result = Self::new(solution, verbosity).run(&initial_guess)?;
+            self.solution = solution.clone();
+
+            let result = self.run(&initial_guess)?;
             total_steps += result.len();
             let mut line = format!("{solution}, {}", result.len());
             for (guess, count) in result {

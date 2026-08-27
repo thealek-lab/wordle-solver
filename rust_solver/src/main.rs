@@ -72,15 +72,13 @@ fn run() -> Result<(), String> {
     } else {
         1
     };
-    if let Some(initial_guess) = calc_init {
-        return GameSim::calculate_initial_guess_performance_from(
-            &initial_guess,
-            verbosity,
-            resume_file.as_deref(),
-        );
+    if let Some(solution) = calc_init {
+        let mut sim = GameSim::new(&solution, &guesses_file, verbosity)?;
+        return sim.calculate_initial_guess_performance_from(&solution, resume_file.as_deref());
     }
     if let Some(solution) = simulate_game {
-        return GameSim::new(&solution, verbosity)
+        let mut sim = GameSim::new(&solution, &guesses_file, verbosity)?;
+        return sim
             .run(force_guess.as_deref().unwrap_or(BEST_INITIAL_GUESS))
             .map(|_| ());
     }
