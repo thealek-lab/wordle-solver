@@ -11,82 +11,60 @@ pub struct Filter {
 }
 
 impl Filter {
-    pub fn new(include_str: &str, exclude_str: &str) -> Result<Self, String> {
-        let stripped_include: String = include_str
-            .chars()
-            .filter(|character| *character != UNKNOWN_CHAR)
-            .collect();
-        let include_len = stripped_include.chars().count();
-        if include_len > 0 {
-            assert!(
-                stripped_include.chars().all(char::is_alphabetic),
-                "Filter include string '{include_str}' is not alphabetic"
-            );
-        }
+    pub fn new(guess_str: &str, feedback_str: &str) -> Result<Self, String> {
+        assert!(
+            guess_str.len() == FILTER_LENGTH,
+            "Filter guess string '{guess_str}' is not 5 characters!"
+        );
 
-        let mut include = include_str.chars().collect::<Vec<_>>();
-        include.resize(FILTER_LENGTH, UNKNOWN_CHAR);
-        if include.len() != FILTER_LENGTH {
-            return Err(format!(
-                "Filter include string '{include_str}' is not 5 characters long"
-            ));
-        }
+        assert!(
+            guess_str.chars().all(char::is_alphabetic),
+            "Filter guess string '{guess_str}' is not alphabetic"
+        );
+        let guess = guess_str.as_bytes();
 
-        let stripped_exclude: String = exclude_str
-            .chars()
-            .filter(|character| *character != UNKNOWN_CHAR)
-            .collect();
-        let exclude_len = stripped_exclude.chars().count();
-        if exclude_len > 0 {
-            assert!(
-                stripped_exclude.chars().all(char::is_alphabetic),
-                "Filter exclude string '{exclude_str}' is not alphabetic"
-            );
-        }
+        let mut feedback = feedback_str.chars().collect::<Vec<_>>();
+        feedback.resize(FILTER_LENGTH, UNKNOWN_CHAR);
+        assert!(
+            feedback.len() == FILTER_LENGTH,
+            "Filter string '{feedback_str}' is not 5 characters long"
+        );
 
-        let mut exclude = exclude_str.chars().collect::<Vec<_>>();
-        exclude.resize(FILTER_LENGTH, UNKNOWN_CHAR);
-        if exclude.len() != FILTER_LENGTH {
-            return Err(format!(
-                "Filter exclude string '{exclude_str}' is not 5 characters long"
-            ));
-        }
-
-        if include_len > 0 && exclude_len > 0 {
-            for index in 0..FILTER_LENGTH {
-                if include[index] != UNKNOWN_CHAR {
-                    assert_eq!(
-                        exclude[index], UNKNOWN_CHAR,
-                        "Filter exclude string '{exclude_str}' collides with include '{include_str}'"
-                    );
-                } else {
-                    assert_ne!(
-                        exclude[index], UNKNOWN_CHAR,
-                        "Filter exclude string '{exclude_str}' collides with include '{include_str}'"
-                    );
-                }
+        let mut include = vec![];
+        let mut exclude: Vec<char> = vec![];
+        for (i, feedback_char) in feedback.iter().enumerate() {
+            let guess_char = guess[i] as char;
+            if *feedback_char == UNKNOWN_CHAR {
+                include.push(UNKNOWN_CHAR);
+                exclude.push(guess_char.to_ascii_lowercase())
+            } else {
+                include.push(guess_char);
+                exclude.push(UNKNOWN_CHAR)
             }
         }
+
+        let include_str: String = include.iter().collect();
 
         Ok(Self {
             include,
             exclude,
-            is_empty: include_len == 0 && exclude_len == 0,
+            is_empty: include_str == EMPTY_FILTER,
         })
     }
 
     pub fn make_filter(filter_str: &str) -> Result<Self, String> {
-        let mut parts = filter_str.split(EXCLUSION_CHAR);
-        let include = parts.next().unwrap_or("");
-        let exclude = parts.next();
-        if parts.next().is_some() {
-            return Err(format!("Invalid filter string {filter_str}"));
-        }
+        assert!(
+            filter_str.len() >= FILTER_LENGTH,
+            "Filter string '{filter_str}' is less than 5 characters!"
+        );
 
-        Self::new(include, exclude.unwrap_or(EMPTY_FILTER))
+        let include = &filter_str[..FILTER_LENGTH];
+        let exclude = &filter_str[FILTER_LENGTH..];
+
+        Self::new(include, exclude)
     }
 
-    pub fn make_filter_func_int(&self) -> impl Fn(&str) -> bool + '_ {
+    pub fn make_filter_func(&self) -> impl Fn(&str) -> bool + '_ {
         move |maybe_sol| {
             assert!(
                 maybe_sol.chars().all(char::is_alphabetic),
@@ -139,10 +117,6 @@ impl Filter {
 
             true
         }
-    }
-
-    pub fn make_filter_func(&self) -> impl Fn(&str) -> bool + '_ {
-        self.make_filter_func_int()
     }
 
     pub fn make_hint(guess: &str, solution: &str) -> Result<Self, String> {

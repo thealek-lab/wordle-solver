@@ -24,7 +24,6 @@ fn run() -> Result<(), String> {
     let mut quiet = false;
     let mut verbose = false;
     let mut hard_mode = false;
-    let mut no_tests = false;
     let mut reverse = false;
     let mut filters = Vec::new();
 
@@ -49,7 +48,6 @@ fn run() -> Result<(), String> {
             "-q" | "--quiet" => quiet = true,
             "-v" | "--verbose" => verbose = true,
             "--hard-mode" => hard_mode = true,
-            "--no-tests" => no_tests = true,
             "-r" | "--reverse" => reverse = true,
             "-h" | "--help" => return print_help(),
             argument if argument.starts_with('-') => {
@@ -58,11 +56,6 @@ fn run() -> Result<(), String> {
             filter => filters.push(filter.to_owned()),
         }
         index += 1;
-    }
-
-    if !no_tests {
-        let mut test_solver = Solver::new(&solutions_file, &guesses_file, 0)?;
-        test_solver.filter(&["BAC__".to_owned()])?;
     }
 
     let verbosity = if verbose {
