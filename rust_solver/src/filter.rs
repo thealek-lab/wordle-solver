@@ -4,6 +4,9 @@ pub const EMPTY_FILTER: &str = "_____";
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Filter {
+    pub guess_str: String,
+    pub feedback_str: String,
+
     pub include: Vec<char>,
     pub exclude: Vec<char>,
     pub is_empty: bool,
@@ -48,6 +51,8 @@ impl Filter {
         let include_str: String = include.iter().collect();
 
         Ok(Self {
+            guess_str: guess_str.to_string(),
+            feedback_str: feedback_str.to_string(),
             include,
             exclude,
             is_empty: include_str == EMPTY_FILTER,
@@ -60,10 +65,10 @@ impl Filter {
             "Filter string '{filter_str}' is less than 5 characters!"
         );
 
-        let include = &filter_str[..FILTER_LENGTH];
-        let exclude = &filter_str[FILTER_LENGTH..];
+        let guess_str = &filter_str[..FILTER_LENGTH];
+        let feedback = &filter_str[FILTER_LENGTH..];
 
-        Self::new(include, exclude)
+        Self::new(guess_str, feedback)
     }
 
     pub fn make_filter_func(&self) -> impl Fn(&str) -> bool + '_ {
@@ -121,76 +126,67 @@ impl Filter {
         }
     }
 
-    pub fn make_hint(guess: &str, solution: &str) -> Result<Self, String> {
-        let guess = guess.to_uppercase();
+    pub fn make_hint(guess_str: &str, solution_str: &str) -> Result<Self, String> {
+        let guess = guess_str.to_uppercase();
         assert!(
             guess.chars().all(char::is_alphabetic),
             "Guess string '{guess}' is not alphabetic!"
         );
-        assert_eq!(
-            guess.chars().count(),
-            FILTER_LENGTH,
+        assert!(
+            guess.chars().count() == FILTER_LENGTH,
             "Guess string '{guess}' is not 5 characters long!"
         );
 
-        let solution = solution.to_uppercase();
+        let solution_str = solution_str.to_uppercase();
         assert!(
-            solution.chars().all(char::is_alphabetic),
-            "Solution string '{solution}' is not alphabetic!"
+            solution_str.chars().all(char::is_alphabetic),
+            "Solution string '{solution_str}' is not alphabetic!"
         );
-        assert_eq!(
-            solution.chars().count(),
-            FILTER_LENGTH,
-            "Solution string '{solution}' is not 5 characters long!"
+        assert!(
+            solution_str.chars().count() == FILTER_LENGTH,
+            "Solution string '{solution_str}' is not 5 characters long!"
         );
 
-        let guess_chars = guess.chars().collect::<Vec<_>>();
-        let mut remaining = solution.chars().collect::<Vec<_>>();
-        let mut include = [UNKNOWN_CHAR; FILTER_LENGTH];
-        let mut exclude = [UNKNOWN_CHAR; FILTER_LENGTH];
+        let guess_chars: Vec<char> = guess.chars().collect();
+        let solution: Vec<char> = solution_str.chars().collect();
+        let mut remaining = solution.clone();
+        let mut guess_out = vec![];
+        let mut feedback = vec![];
 
-        for index in 0..FILTER_LENGTH {
-            if guess_chars[index] == remaining[index] {
-                include[index] = guess_chars[index].to_uppercase().next().unwrap();
+        for (index, guess_char) in guess_chars.iter().enumerate() {
+            if *guess_char == solution[index] {
                 remaining[index] = UNKNOWN_CHAR;
+                guess_out.push(*guess_char);
+                feedback.push(*guess_char);
+            } else {
+                guess_out.push(UNKNOWN_CHAR);
+                feedback.push(UNKNOWN_CHAR);
             }
         }
 
-        for index in 0..FILTER_LENGTH {
-            let character = guess_chars[index];
-            let position = remaining
-                .iter()
-                .position(|&candidate| candidate == character);
-            match position {
-                Some(position) => {
-                    if include[index] != character {
-                        include[index] = character.to_lowercase().next().unwrap();
-                        remaining[position] = UNKNOWN_CHAR;
-                    }
+        for (index, guess_char) in guess_chars.iter().enumerate() {
+            if guess_out[index] == UNKNOWN_CHAR {
+                if let Some(pos) = remaining.iter().position(|&b| b == *guess_char) {
+                    remaining[pos] = UNKNOWN_CHAR;
+                    feedback[index] = guess_char.to_ascii_lowercase();
                 }
-                None => {
-                    if include[index] != character {
-                        exclude[index] = character.to_lowercase().next().unwrap();
-                    }
-                }
+                guess_out[index] = guess_char.to_ascii_lowercase();
             }
         }
 
-        Self::new(
-            &include.iter().collect::<String>(),
-            &exclude.iter().collect::<String>(),
-        )
+        let guess_out: String = guess_out.into_iter().collect();
+        let feedback: String = feedback.into_iter().collect();
+
+        Self::new(&guess_out, &feedback)
     }
 }
 
 impl std::fmt::Display for Filter {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let include = self.include.iter().collect::<String>();
-        let exclude = self.exclude.iter().collect::<String>();
-        if exclude != EMPTY_FILTER {
-            write!(formatter, "{include}^{exclude}")
+        if self.feedback_str != EMPTY_FILTER {
+            write!(formatter, "{}{}", self.guess_str, self.feedback_str)
         } else {
-            write!(formatter, "{include}")
+            write!(formatter, "{}", self.guess_str)
         }
     }
 }
