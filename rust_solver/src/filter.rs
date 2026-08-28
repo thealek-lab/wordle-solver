@@ -1,4 +1,3 @@
-pub const EXCLUSION_CHAR: char = '^';
 pub const UNKNOWN_CHAR: char = '_';
 pub const FILTER_LENGTH: usize = 5;
 pub const EMPTY_FILTER: &str = "_____";
@@ -34,7 +33,10 @@ impl Filter {
         let mut exclude: Vec<char> = vec![];
         for (i, feedback_char) in feedback.iter().enumerate() {
             let guess_char = guess[i] as char;
-            if *feedback_char == UNKNOWN_CHAR {
+            if guess_char.is_ascii_uppercase() {
+                include.push(guess_char);
+                exclude.push(UNKNOWN_CHAR)
+            } else if *feedback_char == UNKNOWN_CHAR {
                 include.push(UNKNOWN_CHAR);
                 exclude.push(guess_char.to_ascii_lowercase())
             } else {
