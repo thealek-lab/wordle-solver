@@ -71,6 +71,13 @@
     @keyframes pop { 50% { transform: scale(1.08); } }
     @keyframes flip { 0% { transform: rotateX(0); } 45% { transform: rotateX(90deg); } 55% { transform: rotateX(90deg); } 100% { transform: rotateX(0); } }
     @keyframes shake { 20%, 60% { transform: translateX(-5px); } 40%, 80% { transform: translateX(5px); } }
+    @media (max-width: 420px) {
+      .app { padding-left: 8px; padding-right: 8px; }
+      .keyboard { width: 100%; }
+      .key-row { gap: 3px; }
+      .key { min-width: 0; padding-left: 2px; padding-right: 2px; font-size: 11px; }
+      .key.wide { font-size: 9px; }
+    }
     @media (max-height: 700px) { header { height: 62px; } .tile { font-size: 25px; } .key { height: 46px; } .board { margin-bottom: 10px; } }
   </style>
 </head>
