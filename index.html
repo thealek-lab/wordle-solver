@@ -38,6 +38,8 @@
 
     .status { min-height: 42px; display: grid; place-items: center; font-size: 14px; letter-spacing: .02em; color: var(--muted); }
     .status strong { color: var(--ink); }
+    .remaining { margin: -2px 0 10px; color: var(--muted); text-align: center; font-size: 12px; letter-spacing: .03em; }
+    .remaining strong { color: var(--ink); font-size: 14px; }
     .board { width: min(350px, 100%); margin: 4px auto 18px; display: grid; grid-template-rows: repeat(6, 1fr); gap: 5px; }
     .row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
     .tile { aspect-ratio: 1; border: 2px solid var(--line); display: grid; place-items: center; font-size: clamp(24px, 7vw, 32px); font-weight: 700; line-height: 1; text-transform: uppercase; user-select: none; }
@@ -89,6 +91,7 @@
       <div class="header-side right"><button class="icon-button" id="reset" aria-label="New game" title="New game">↻</button></div>
     </header>
     <div class="status" id="status" aria-live="polite">Guess the <strong>WORDLE</strong> in 6 tries.</div>
+    <div class="remaining" aria-live="polite">Possible solutions: <strong id="remainingCount">--</strong></div>
     <section class="board" id="board" aria-label="Wordle board"></section>
     <section class="keyboard" id="keyboard" aria-label="On-screen keyboard"></section>
     <p class="footer-note">A tiny word puzzle for a quiet moment.</p>
@@ -110,6 +113,7 @@
     const maxRows = 6;
     let answer = "";
     let solutionWords = [];
+    let possibleSolutions = [];
     let gameReady = false;
     let currentRow = 0;
     let currentGuess = "";
@@ -182,6 +186,10 @@
       if (submittedGuess.length !== 5) return showMessage("Not enough letters", true);
       if (!solutionWords.includes(submittedGuess)) return showMessage("Not in word list", true);
       const result = scoreGuess(submittedGuess, answer);
+      possibleSolutions = possibleSolutions.filter((candidate) =>
+        scoreGuess(submittedGuess, candidate).every((state, index) => state === result[index])
+      );
+      document.querySelector("#remainingCount").textContent = possibleSolutions.length;
       [...submittedGuess].forEach((letter, index) => {
         const tile = document.querySelector(`#tile-${currentRow}-${index}`);
         setTimeout(() => {
@@ -241,8 +249,10 @@
         const text = await response.text();
         solutionWords = [...text.matchAll(/^([A-Za-z]{5})\s/mg)].map((match) => match[1].toUpperCase());
         if (!solutionWords.length) throw new Error("Solutions list is empty");
+        possibleSolutions = [...solutionWords];
         answer = solutionWords[Math.floor(Math.random() * solutionWords.length)];
         gameReady = true;
+        document.querySelector("#remainingCount").textContent = possibleSolutions.length;
         status.innerHTML = 'Guess the <strong>WORDLE</strong> in 6 tries.';
       } catch (error) {
         gameOver = true;
