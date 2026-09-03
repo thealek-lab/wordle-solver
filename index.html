@@ -36,6 +36,7 @@
     .icon-button { border: 0; background: transparent; color: var(--muted); width: 36px; height: 36px; border-radius: 50%; font-size: 21px; cursor: pointer; transition: background .2s, color .2s; }
     .icon-button:hover { background: #ededeb; color: var(--ink); }
     .language-button { width: auto; padding: 0 7px; font-size: 11px; font-weight: 700; letter-spacing: .05em; }
+    .mode-button { width: auto; padding: 0 7px; font-size: 10px; font-weight: 700; letter-spacing: .04em; }
     .language-flags { font-size: 16px; white-space: nowrap; }
 
     .status { min-height: 42px; display: grid; place-items: center; font-size: 14px; letter-spacing: .02em; color: var(--muted); }
@@ -88,7 +89,7 @@
 <body>
   <main class="app">
     <header>
-      <div class="header-side"><button class="icon-button" id="help" aria-label="How to play" title="How to play">?</button><span class="language-flags" aria-hidden="true">🇺🇸 🇮🇹</span><button class="icon-button language-button" id="languageToggle" aria-label="Switch language" title="Switch language">IT</button></div>
+      <div class="header-side"><button class="icon-button" id="help" aria-label="How to play" title="How to play">?</button><span class="language-flags" aria-hidden="true">🇺🇸 🇮🇹</span><button class="icon-button language-button" id="languageToggle" aria-label="Switch language" title="Switch language">IT</button><button class="icon-button mode-button" id="easyModeToggle" aria-label="Enable Easy Mode" title="Enable Easy Mode">EASY</button></div>
       <h1>Alek Puzzle</h1>
       <div class="header-side right"><button class="icon-button" id="reset" aria-label="New game" title="New game">↻</button></div>
     </header>
@@ -116,6 +117,7 @@
     let solutionWords = [];
     let possibleSolutions = [];
     let language = localStorage.getItem("wordle-language") === "it" ? "it" : "en";
+    let easyMode = localStorage.getItem("wordle-easy-mode") === "true";
     let gameReady = false;
     let currentRow = 0;
     let currentGuess = "";
@@ -186,7 +188,7 @@
       const row = document.querySelector(`#row-${currentRow}`);
       const submittedGuess = currentGuess;
       if (submittedGuess.length !== 5) return showMessage("Not enough letters", true);
-      if (!solutionWords.includes(submittedGuess)) return showMessage("Not in word list", true);
+      if (!easyMode && !solutionWords.includes(submittedGuess)) return showMessage("Not in word list", true);
       const result = scoreGuess(submittedGuess, answer);
       possibleSolutions = possibleSolutions.filter((candidate) =>
         scoreGuess(submittedGuess, candidate).every((state, index) => state === result[index])
@@ -251,6 +253,13 @@
       languageToggle.title = languageToggle.getAttribute("aria-label");
     }
 
+    function updateEasyModeButton() {
+      const easyModeToggle = document.querySelector("#easyModeToggle");
+      easyModeToggle.textContent = easyMode ? "EASY ON" : "EASY";
+      easyModeToggle.setAttribute("aria-label", easyMode ? "Disable Easy Mode" : "Enable Easy Mode");
+      easyModeToggle.title = easyModeToggle.getAttribute("aria-label");
+    }
+
     async function loadSolutions() {
       try {
         const solutionFile = language === "it" ? "soluzioni.txt" : "solutions.txt";
@@ -278,11 +287,16 @@
       localStorage.setItem("wordle-language", language === "en" ? "it" : "en");
       resetGame();
     });
+    document.querySelector("#easyModeToggle").addEventListener("click", () => {
+      localStorage.setItem("wordle-easy-mode", String(!easyMode));
+      resetGame();
+    });
     document.querySelector("#help").addEventListener("click", () => modalBackdrop.classList.add("open"));
     document.querySelector("#closeHelp").addEventListener("click", () => modalBackdrop.classList.remove("open"));
     document.querySelector("#modalNewGame").addEventListener("click", resetGame);
     modalBackdrop.addEventListener("click", (event) => { if (event.target === modalBackdrop) modalBackdrop.classList.remove("open"); });
     updateLanguageButton();
+    updateEasyModeButton();
     status.textContent = "Loading solutions...";
     loadSolutions();
   </script>
