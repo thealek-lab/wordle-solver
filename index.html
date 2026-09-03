@@ -87,12 +87,12 @@
   <main class="app">
     <header>
       <div class="header-side"><button class="icon-button" id="help" aria-label="How to play" title="How to play">?</button></div>
-      <h1>Wordle</h1>
+      <h1>Alek Puzzle</h1>
       <div class="header-side right"><button class="icon-button" id="reset" aria-label="New game" title="New game">↻</button></div>
     </header>
     <div class="status" id="status" aria-live="polite">Guess the <strong>Word</strong> in 6 tries.</div>
     <div class="remaining" aria-live="polite">Possible solutions: <strong id="remainingCount">--</strong></div>
-    <section class="board" id="board" aria-label="Wordle board"></section>
+    <section class="board" id="board" aria-label="Alek Puzzle board"></section>
     <section class="keyboard" id="keyboard" aria-label="On-screen keyboard"></section>
   </main>
 
@@ -236,7 +236,7 @@
         const row = document.querySelector(`#row-${currentRow}`);
         row.classList.add("shake");
         setTimeout(() => row.classList.remove("shake"), 500);
-        setTimeout(() => { if (!gameOver) status.innerHTML = 'Guess the <strong>WORDLE</strong> in 6 tries.'; }, 1400);
+        setTimeout(() => { if (!gameOver) status.innerHTML = 'Guess the <strong>Word</strong> in 6 tries.'; }, 1400);
       }
     }
 
@@ -252,7 +252,7 @@
         answer = solutionWords[Math.floor(Math.random() * solutionWords.length)];
         gameReady = true;
         document.querySelector("#remainingCount").textContent = possibleSolutions.length;
-        status.innerHTML = 'Guess the <strong>WORDLE</strong> in 6 tries.';
+        status.innerHTML = 'Guess the <strong>Word</strong> in 6 tries.';
       } catch (error) {
         gameOver = true;
         status.textContent = "Could not load solutions.txt.";
