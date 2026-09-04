@@ -37,7 +37,11 @@
     .icon-button:hover { background: #ededeb; color: var(--ink); }
     .language-button { width: auto; padding: 0 7px; font-size: 11px; font-weight: 700; letter-spacing: .05em; }
     .mode-button { width: auto; padding: 0 7px; font-size: 10px; font-weight: 700; letter-spacing: .04em; }
-    .language-flags { font-size: 16px; white-space: nowrap; }
+    .language-flags { display: inline-flex; gap: 5px; white-space: nowrap; }
+    .flag { position: relative; display: inline-block; width: 22px; height: 15px; overflow: hidden; border: 1px solid rgba(44, 44, 42, .2); border-radius: 2px; box-shadow: 0 1px 2px rgba(42, 42, 38, .12); }
+    .flag.us { background: repeating-linear-gradient(to bottom, #b22234 0 2px, #fff 2px 4px); }
+    .flag.us::after { content: ""; position: absolute; top: 0; left: 0; width: 9px; height: 8px; background: #3c3b6e; }
+    .flag.it { background: linear-gradient(to right, #009246 0 33.33%, #fff 33.33% 66.66%, #ce2b37 66.66%); }
 
     .status { min-height: 42px; display: grid; place-items: center; font-size: 14px; letter-spacing: .02em; color: var(--muted); }
     .status strong { color: var(--ink); }
@@ -78,6 +82,13 @@
     @keyframes shake { 20%, 60% { transform: translateX(-5px); } 40%, 80% { transform: translateX(5px); } }
     @media (max-width: 420px) {
       .app { padding-left: 8px; padding-right: 8px; }
+      header { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
+      header h1 { font-size: 26px; }
+      .header-side { min-width: 0; gap: 3px; }
+      .icon-button { width: 30px; height: 30px; }
+      .language-button, .mode-button { width: auto; padding-left: 4px; padding-right: 4px; }
+      .mode-button { font-size: 8px; }
+      .flag { width: 18px; height: 12px; }
       .keyboard { width: 100%; }
       .key-row { gap: 3px; }
       .key { min-width: 0; padding-left: 2px; padding-right: 2px; font-size: 11px; }
@@ -89,7 +100,7 @@
 <body>
   <main class="app">
     <header>
-      <div class="header-side"><button class="icon-button" id="help" aria-label="Regole" title="Regole">?</button><span class="language-flags" aria-hidden="true">🇺🇸 🇮🇹</span><button class="icon-button language-button" id="languageToggle" aria-label="Passa all'inglese" title="Passa all'inglese">EN</button><button class="icon-button mode-button" id="easyModeToggle" aria-label="Enable Easy Mode" title="Enable Easy Mode">EASY</button></div>
+      <div class="header-side"><button class="icon-button" id="help" aria-label="Regole" title="Regole">?</button><span class="language-flags" aria-label="Bandiere inglese e italiana"><span class="flag us" title="English"></span><span class="flag it" title="Italiano"></span></span><button class="icon-button language-button" id="languageToggle" aria-label="Passa all'inglese" title="Passa all'inglese">EN</button><button class="icon-button mode-button" id="easyModeToggle" aria-label="Enable Easy Mode" title="Enable Easy Mode">EASY</button></div>
       <h1>Indovina Parole</h1>
       <div class="header-side right"><button class="icon-button" id="reset" aria-label="New game" title="New game">↻</button></div>
     </header>
@@ -103,7 +114,7 @@
     <div class="modal">
       <button class="icon-button close" id="closeHelp" aria-label="Close">×</button>
       <h2 id="modalTitle">How to play</h2>
-      <p>Guess the hidden five-letter word in six tries.</p>
+      <p>Indovina la parola nascosta di cinque lettere in sei tentativi.</p>
       <p>Each tile changes color to show how close your guess was. Green means the letter is in the right place. Gold means it belongs elsewhere. Gray means it is not in the word.</p>
       <button class="new-game" id="modalNewGame">New game</button>
     </div>
@@ -241,7 +252,7 @@
         const row = document.querySelector(`#row-${currentRow}`);
         row.classList.add("shake");
         setTimeout(() => row.classList.remove("shake"), 500);
-        setTimeout(() => { if (!gameOver) status.innerHTML = 'Guess the <strong>Word</strong> in 6 tries.'; }, 1400);
+        setTimeout(() => { if (!gameOver) status.innerHTML = 'Indovina la <strong>Parola</strong> in 6 tentativi.'; }, 1400);
       }
     }
 
@@ -255,7 +266,7 @@
 
     function updateEasyModeButton() {
       const easyModeToggle = document.querySelector("#easyModeToggle");
-      easyModeToggle.textContent = easyMode ? "EASY ON" : "EASY";
+      easyModeToggle.textContent = easyMode ? "EASY ON" : "EASY OFF";
       easyModeToggle.setAttribute("aria-label", easyMode ? "Disable Easy Mode" : "Enable Easy Mode");
       easyModeToggle.title = easyModeToggle.getAttribute("aria-label");
     }
@@ -275,7 +286,7 @@
         answer = solutionWords[Math.floor(Math.random() * solutionWords.length)];
         gameReady = true;
         document.querySelector("#remainingCount").textContent = possibleSolutions.length;
-        status.innerHTML = 'Guess the <strong>Word</strong> in 6 tries.';
+        status.innerHTML = 'Indovina la <strong>Parola</strong> in 6 tentativi.';
       } catch (error) {
         gameOver = true;
         status.textContent = "Could not load solutions.txt.";
