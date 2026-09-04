@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#fbfbf9">
-  <title>Alek Word Puzzle</title>
+  <title>Indovina Parole</title>
   <style>
     :root {
       --paper: #fbfbf9;
@@ -89,13 +89,13 @@
 <body>
   <main class="app">
     <header>
-      <div class="header-side"><button class="icon-button" id="help" aria-label="How to play" title="How to play">?</button><span class="language-flags" aria-hidden="true">🇺🇸 🇮🇹</span><button class="icon-button language-button" id="languageToggle" aria-label="Switch language" title="Switch language">IT</button><button class="icon-button mode-button" id="easyModeToggle" aria-label="Enable Easy Mode" title="Enable Easy Mode">EASY</button></div>
-      <h1>Alek Puzzle</h1>
+      <div class="header-side"><button class="icon-button" id="help" aria-label="Regole" title="Regole">?</button><span class="language-flags" aria-hidden="true">🇺🇸 🇮🇹</span><button class="icon-button language-button" id="languageToggle" aria-label="Passa all'inglese" title="Passa all'inglese">EN</button><button class="icon-button mode-button" id="easyModeToggle" aria-label="Enable Easy Mode" title="Enable Easy Mode">EASY</button></div>
+      <h1>Indovina Parole</h1>
       <div class="header-side right"><button class="icon-button" id="reset" aria-label="New game" title="New game">↻</button></div>
     </header>
-    <div class="status" id="status" aria-live="polite">Guess the <strong>Word</strong> in 6 tries.</div>
-    <div class="remaining" aria-live="polite">Possible solutions: <strong id="remainingCount">--</strong></div>
-    <section class="board" id="board" aria-label="Alek Puzzle board"></section>
+    <div class="status" id="status" aria-live="polite">Indovina la <strong>Parola</strong> in 6 tentativi.</div>
+    <div class="remaining" aria-live="polite">Soluzioni possibili: <strong id="remainingCount">--</strong></div>
+    <section class="board" id="board" aria-label="Indovina Parole"></section>
     <section class="keyboard" id="keyboard" aria-label="On-screen keyboard"></section>
   </main>
 
@@ -116,7 +116,7 @@
     let answer = "";
     let solutionWords = [];
     let possibleSolutions = [];
-    const language = "en";
+    const language = "it";
     let easyMode = localStorage.getItem("wordle-easy-mode") === "true";
     let gameReady = false;
     let currentRow = 0;
@@ -284,7 +284,7 @@
     document.addEventListener("keydown", (event) => handleKey(event.key.toUpperCase()));
     document.querySelector("#reset").addEventListener("click", resetGame);
     document.querySelector("#languageToggle").addEventListener("click", () => {
-      window.location.href = "index_it.html";
+      window.location.href = "index.html";
     });
     document.querySelector("#easyModeToggle").addEventListener("click", () => {
       localStorage.setItem("wordle-easy-mode", String(!easyMode));
