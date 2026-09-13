@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
 
-use crate::filter::Filter;
+use crate::filter::WordClue;
 
 pub const DEFAULT_SOLUTIONS_FILE: &str = "./solutions.txt";
 pub const DEFAULT_GUESSES_FILE: &str = "./all_guesses_2022_11K.txt";
@@ -74,11 +74,24 @@ impl Solver {
         self.filtered_sols.is_empty()
     }
 
-    pub fn filter(&mut self, filter_str_list: &[String]) -> Result<(), String> {
-        for filter_str in filter_str_list {
-            let filter = Filter::make_filter(filter_str)?;
-            let matches = filter.make_filter_func();
-            self.filtered_sols.retain(|solution| matches(solution));
+    pub fn filter_by_guess_n_clue_str(
+        &mut self,
+        guess_n_clue_list: &[String],
+    ) -> Result<(), String> {
+        for guess_n_clue_str in guess_n_clue_list {
+            let (guess_chars, word_clue) = WordClue::new_from_guess_n_clue_str(guess_n_clue_str);
+            self.filtered_sols
+                .retain(|maybe_sol: &String| word_clue.is_match(guess_chars, maybe_sol));
+        }
+        self.filtered_sols.sort();
+        Ok(())
+    }
+
+    pub fn filter(&mut self, guess_str: &str, clue_list: &[WordClue]) -> Result<(), String> {
+        let guess_chars = WordClue::make_word_chars(guess_str);
+        for word_clue in clue_list {
+            self.filtered_sols
+                .retain(|maybe_sol: &String| word_clue.is_match(guess_chars, maybe_sol));
         }
         self.filtered_sols.sort();
         Ok(())

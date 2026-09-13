@@ -3,7 +3,7 @@ use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::time::Instant;
 
-use crate::filter::Filter;
+use crate::filter::WordClue;
 use crate::solver::{DEFAULT_SOLUTIONS_FILE, Solver, resolve_default_path};
 
 pub const BEST_INITIAL_GUESS: &str = "SLATE";
@@ -40,29 +40,36 @@ impl GameSim {
         })
     }
 
-    pub fn run(&mut self, initial_guess: &str) -> Result<Vec<(String, String)>, String> {
+    pub fn run(&mut self, initial_guess_str: &str) -> Result<Vec<(String, String)>, String> {
         let start_time = Instant::now();
 
         self.solver.filtered_sols = self.solver.all_solutions.clone();
 
-        let initial_guess = initial_guess.to_uppercase();
-        let mut hints = vec![Filter::make_hint(&initial_guess, &self.solution)?.to_string()];
-        self.solver.filter(&hints)?;
-        let mut guesses = vec![(initial_guess.clone(), self.solver.len().to_string())];
+        let initial_guess = WordClue::make_word_chars(initial_guess_str);
+        let mut clues = vec![WordClue::new_from_guess_n_solution(
+            initial_guess,
+            &self.solution,
+        )];
+        self.solver.filter(&initial_guess_str, &clues)?;
+        let mut guesses = vec![(initial_guess_str.to_string(), self.solver.len().to_string())];
         println!(
-            "After first guess {initial_guess} Solutions: {}",
+            "After first guess {initial_guess_str} Solutions: {}",
             self.solver.len()
         );
         while !self.solver.is_empty() {
             let ranked_guesses = self.solver.find_best_guess(false, false)?;
-            let best = &ranked_guesses[0];
-            hints.push(Filter::make_hint(&best.0, &self.solution)?.to_string());
-            self.solver.filter(&hints)?;
-            guesses.push((best.0.clone(), self.solver.len().to_string()));
+            let (best_str, _entropy) = &ranked_guesses[0];
+            let best_guess = WordClue::make_word_chars(best_str);
+            clues.push(WordClue::new_from_guess_n_solution(
+                best_guess,
+                &self.solution,
+            ));
+            self.solver.filter(best_str, &clues)?;
+            guesses.push((best_str.clone(), self.solver.len().to_string()));
             println!(
                 "After guess {} {} Solutions: {}",
                 guesses.len(),
-                guesses.last().unwrap().0,
+                best_str,
                 self.solver.len()
             );
             if !self.solver.is_empty() && (self.verbosity >= 2 || self.solver.len() <= 10) {

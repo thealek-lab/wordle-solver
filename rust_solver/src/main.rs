@@ -78,12 +78,12 @@ fn run() -> Result<(), String> {
 
     let mut solver = Solver::new(&solutions_file, &guesses_file, verbosity)?;
     if hint_best.is_some() && filters.is_empty() {
-        filters.push(crate::filter::EMPTY_FILTER.to_owned());
+        //TODO TBD
     }
     if filters.is_empty() {
         return Ok(());
     }
-    solver.filter(&filters)?;
+    solver.filter_by_guess_n_clue_str(&filters)?;
     let num_sols = solver.len();
     println!("Filtered Solutions: {num_sols}");
     if num_sols > 0 && (solver.verbosity >= 2 || num_sols <= 10) {

@@ -1,193 +1,177 @@
-pub const UNKNOWN_CHAR: char = '_';
-pub const FILTER_LENGTH: usize = 5;
-pub const EMPTY_FILTER: &str = "_____";
+pub const WORD_LENGTH: usize = 5;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Filter {
-    pub guess_str: String,
-    pub feedback_str: String,
+type WordChars = [char; WORD_LENGTH];
 
-    pub include: Vec<char>,
-    pub exclude: Vec<char>,
-    pub is_empty: bool,
+#[repr(usize)]
+#[derive(Clone, Copy, Debug)]
+/// Represents a single clue for a letter in a guess, which can be green, yellow, or gray (underscore).
+enum SingleClue {
+    Green = 2,
+    Yellow = 1,
+    Gray = 0,
 }
 
-impl Filter {
-    pub fn new(guess_str: &str, feedback_str: &str) -> Result<Self, String> {
-        assert!(
-            guess_str.len() == FILTER_LENGTH,
-            "Filter guess string '{guess_str}' is not 5 characters!"
-        );
-
-        assert!(
-            guess_str.chars().all(char::is_alphabetic),
-            "Filter guess string '{guess_str}' is not alphabetic"
-        );
-        let guess = guess_str.as_bytes();
-
-        let mut feedback = feedback_str.chars().collect::<Vec<_>>();
-        feedback.resize(FILTER_LENGTH, UNKNOWN_CHAR);
-        assert!(
-            feedback.len() == FILTER_LENGTH,
-            "Filter string '{feedback_str}' is not 5 characters long"
-        );
-
-        let mut include = vec![];
-        let mut exclude: Vec<char> = vec![];
-        for (i, feedback_char) in feedback.iter().enumerate() {
-            let guess_char = guess[i] as char;
-            if guess_char.is_ascii_uppercase() {
-                include.push(guess_char);
-                exclude.push(UNKNOWN_CHAR)
-            } else if *feedback_char == UNKNOWN_CHAR {
-                include.push(UNKNOWN_CHAR);
-                exclude.push(guess_char.to_ascii_lowercase())
-            } else {
-                include.push(guess_char);
-                exclude.push(UNKNOWN_CHAR)
-            }
-        }
-
-        let include_str: String = include.iter().collect();
-
-        Ok(Self {
-            guess_str: guess_str.to_string(),
-            feedback_str: feedback_str.to_string(),
-            include,
-            exclude,
-            is_empty: include_str == EMPTY_FILTER,
-        })
-    }
-
-    pub fn make_filter(filter_str: &str) -> Result<Self, String> {
-        assert!(
-            filter_str.len() >= FILTER_LENGTH,
-            "Filter string '{filter_str}' is less than 5 characters!"
-        );
-
-        let guess_str = &filter_str[..FILTER_LENGTH];
-        let feedback = &filter_str[FILTER_LENGTH..];
-
-        Self::new(guess_str, feedback)
-    }
-
-    pub fn make_filter_func(&self) -> impl Fn(&str) -> bool + '_ {
-        move |maybe_sol| {
-            assert!(
-                maybe_sol.chars().all(char::is_alphabetic),
-                "Possible solution {maybe_sol} is not alphabetic"
-            );
-            assert!(
-                maybe_sol.chars().all(char::is_uppercase),
-                "Possible solution {maybe_sol} is not uppercase"
-            );
-            assert_eq!(
-                maybe_sol.chars().count(),
-                FILTER_LENGTH,
-                "Possible solution {maybe_sol} is not 5 characters long"
-            );
-
-            let mut solution = maybe_sol.chars().collect::<Vec<_>>();
-
-            for (index, &include_char) in self.include.iter().enumerate() {
-                if include_char != UNKNOWN_CHAR && include_char.is_uppercase() {
-                    if solution[index] != include_char {
-                        return false;
-                    }
-                    solution[index] = UNKNOWN_CHAR;
-                }
-            }
-
-            for (index, &include_char) in self.include.iter().enumerate() {
-                if include_char != UNKNOWN_CHAR && include_char.is_lowercase() {
-                    let upper = include_char.to_uppercase().next().unwrap();
-                    if solution[index] == upper {
-                        return false;
-                    }
-
-                    let Some(position) = solution.iter().position(|&character| character == upper)
-                    else {
-                        return false;
-                    };
-                    solution[position] = UNKNOWN_CHAR;
-                }
-            }
-
-            for &exclude_char in &self.exclude {
-                if exclude_char != UNKNOWN_CHAR {
-                    let upper = exclude_char.to_uppercase().next().unwrap();
-                    if solution.contains(&upper) {
-                        return false;
-                    }
-                }
-            }
-
-            true
-        }
-    }
-
-    pub fn make_hint(guess_str: &str, solution_str: &str) -> Result<Self, String> {
-        let guess = guess_str.to_uppercase();
-        assert!(
-            guess.chars().all(char::is_alphabetic),
-            "Guess string '{guess}' is not alphabetic!"
-        );
-        assert!(
-            guess.chars().count() == FILTER_LENGTH,
-            "Guess string '{guess}' is not 5 characters long!"
-        );
-
-        let solution_str = solution_str.to_uppercase();
-        assert!(
-            solution_str.chars().all(char::is_alphabetic),
-            "Solution string '{solution_str}' is not alphabetic!"
-        );
-        assert!(
-            solution_str.chars().count() == FILTER_LENGTH,
-            "Solution string '{solution_str}' is not 5 characters long!"
-        );
-
-        let guess_chars: Vec<char> = guess.chars().collect();
-        let solution: Vec<char> = solution_str.chars().collect();
-        let mut remaining = solution.clone();
-        let mut guess_out = vec![];
-        let mut feedback = vec![];
-
-        for (index, guess_char) in guess_chars.iter().enumerate() {
-            if *guess_char == solution[index] {
-                remaining[index] = UNKNOWN_CHAR;
-                guess_out.push(*guess_char);
-                feedback.push(*guess_char);
-            } else {
-                guess_out.push(UNKNOWN_CHAR);
-                feedback.push(UNKNOWN_CHAR);
-            }
-        }
-
-        for (index, guess_char) in guess_chars.iter().enumerate() {
-            if guess_out[index] == UNKNOWN_CHAR {
-                if let Some(pos) = remaining.iter().position(|&b| b == *guess_char) {
-                    remaining[pos] = UNKNOWN_CHAR;
-                    feedback[index] = guess_char.to_ascii_lowercase();
-                }
-                guess_out[index] = guess_char.to_ascii_lowercase();
-            }
-        }
-
-        let guess_out: String = guess_out.into_iter().collect();
-        let feedback: String = feedback.into_iter().collect();
-
-        Self::new(&guess_out, &feedback)
-    }
+impl SingleClue {
+    const UNKNOWN_CHAR: char = '_';
+    const GREEN_CHAR: char = 'g';
+    const YELLOW_CHAR: char = 'y';
 }
 
-impl std::fmt::Display for Filter {
+impl std::fmt::Display for SingleClue {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.feedback_str != EMPTY_FILTER {
-            write!(formatter, "{}{}", self.guess_str, self.feedback_str)
-        } else {
-            write!(formatter, "{}", self.guess_str)
+        match self {
+            SingleClue::Green => write!(formatter, "{}", Self::GREEN_CHAR),
+            SingleClue::Yellow => write!(formatter, "{}", Self::YELLOW_CHAR),
+            SingleClue::Gray => write!(formatter, "{}", Self::UNKNOWN_CHAR),
         }
+    }
+}
+/// Represents a word clue value, which is a number between 0 and 242 (3^5 - 1) that encodes the possible clues for a guess.
+type WordClueVal = usize;
+type CharClues = [SingleClue; WORD_LENGTH];
+
+#[derive(Debug)]
+/// Represents a set of clues for a guess, which can be green, yellow, or gray (underscore).
+pub struct WordClue {
+    word_clue: CharClues,
+    val: WordClueVal,
+}
+
+impl WordClue {
+    /// Creates a new WordClue from a string of clues, which can be green, yellow, or gray (underscore).
+    fn new_from_clue_str(clues_str: &str) -> Self {
+        assert!(
+            clues_str.len() == WORD_LENGTH,
+            "Clues string '{clues_str}' is not 5 characters long!"
+        );
+
+        let char_clues = clues_str
+            .to_lowercase()
+            .chars()
+            .map(|c| match c {
+                SingleClue::GREEN_CHAR => SingleClue::Green,
+                SingleClue::YELLOW_CHAR => SingleClue::Yellow,
+                SingleClue::UNKNOWN_CHAR => SingleClue::Gray,
+                _ => panic!("Invalid clue character '{c}'"),
+            })
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
+
+        Self::new_from_char_clues(char_clues)
+    }
+
+    fn new_from_char_clues(char_clues: CharClues) -> Self {
+        Self {
+            word_clue: char_clues,
+            val: Self::calc_val(char_clues),
+        }
+    }
+
+    fn calc_val(clues: CharClues) -> usize {
+        let mut val = 0;
+        for clue in clues {
+            val = val * 3 + clue as usize;
+        }
+
+        val
+    }
+
+    pub fn make_word_chars(word: &str) -> WordChars {
+        assert!(
+            word.len() == WORD_LENGTH,
+            "Guess string '{word}' is not 5 characters long!"
+        );
+
+        assert!(
+            word.chars().all(char::is_alphabetic),
+            "Guess string '{word}' is not alphabetic!"
+        );
+
+        word.to_uppercase()
+            .chars()
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap()
+    }
+
+    pub fn new_from_guess_n_solution(guess_chars: WordChars, solution: &str) -> Self {
+        let solution_chars = Self::make_word_chars(solution);
+
+        let mut char_clues = [SingleClue::Gray; WORD_LENGTH];
+        let mut remaining = [true; WORD_LENGTH];
+
+        for (index, &guess_char) in guess_chars.iter().enumerate() {
+            if guess_char == solution_chars[index] {
+                char_clues[index] = SingleClue::Green;
+                remaining[index] = false;
+            }
+        }
+
+        for index in 0..WORD_LENGTH {
+            if let SingleClue::Gray = char_clues[index] {
+                if let Some(position) = (0..WORD_LENGTH).find(|&position| {
+                    remaining[position] && solution_chars[position] == guess_chars[index]
+                }) {
+                    char_clues[index] = SingleClue::Yellow;
+                    remaining[position] = false;
+                }
+            }
+        }
+
+        Self::new_from_char_clues(char_clues)
+    }
+
+    pub fn new_from_guess_n_clue_str(guess_and_clue_str: &str) -> (WordChars, Self) {
+        assert!(
+            guess_and_clue_str.len() == 2 * WORD_LENGTH,
+            "Guess+clue string '{guess_and_clue_str}' is not 10 characters long!"
+        );
+
+        let (guess_str, clue_str) = guess_and_clue_str.split_at(WORD_LENGTH);
+        let guess_chars = Self::make_word_chars(guess_str);
+        (guess_chars, Self::new_from_clue_str(clue_str))
+    }
+
+    fn calc_val_from_guess_n_solution(guess: WordChars, solution: &[char]) -> WordClueVal {
+        let mut pattern = [SingleClue::Gray as usize; WORD_LENGTH];
+        let mut remaining = [true; WORD_LENGTH];
+
+        for index in 0..WORD_LENGTH {
+            if guess[index] == solution[index] {
+                pattern[index] = SingleClue::Green as usize;
+                remaining[index] = false;
+            }
+        }
+
+        for index in 0..WORD_LENGTH {
+            if pattern[index] == SingleClue::Gray as usize {
+                if let Some(position) = (0..WORD_LENGTH)
+                    .find(|&position| remaining[position] && solution[position] == guess[index])
+                {
+                    pattern[index] = SingleClue::Yellow as usize;
+                    remaining[position] = false;
+                }
+            }
+        }
+
+        pattern.iter().fold(0, |key, &value| key * 3 + value)
+    }
+
+    pub fn is_match(&self, guess_chars: WordChars, solution_str: &str) -> bool {
+        let solution_chars = Self::make_word_chars(solution_str);
+
+        Self::calc_val_from_guess_n_solution(guess_chars, &solution_chars) == self.val
+    }
+}
+
+impl std::fmt::Display for WordClue {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for clue in &self.word_clue {
+            write!(formatter, "{clue}")?
+        }
+
+        Ok(())
     }
 }
 
@@ -210,7 +194,11 @@ mod tests {
 
         for (guess, solution, expected) in test_cases {
             assert_eq!(
-                Filter::make_hint(guess, solution).unwrap().to_string(),
+                WordClue::new_from_guess_n_solution(guess, solution)
+                    .word_clue
+                    .iter()
+                    .map(|clue| clue.to_string())
+                    .collect::<String>(),
                 expected
             );
         }
@@ -254,6 +242,12 @@ mod tests {
             ("WhoSE__o", "WORSE", true),
             ("WorSE", "WHOSE", false),
             ("WorSE_o", "WHOSE", true),
+            ("pooli_oo", "POOLS", false),
+            ("oxxoxo__o", "POOLS", true),
+            ("oxoxxo_o", "POOLS", false),
+            ("oxOxxo", "POOLS", true),
+            ("oxxooo__oo", "POOLS", false),
+            ("BREAd____d", "POOLS", false),
         ];
 
         for (filter_str, candidate, expected) in test_cases {
