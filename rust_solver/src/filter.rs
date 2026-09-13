@@ -193,19 +193,20 @@ mod tests {
     #[test]
     fn hint_matches_python_cases() {
         let test_cases = [
-            ("ABACK", "BREAD", "abackab___"),
-            ("ABACK", "BREAK", "abacKab__K"),
-            ("ABACK", "BREAM", "abackab___"),
-            ("ABAMK", "BREAD", "abamkab___"),
-            ("ABAMK", "BREAK", "abamKab__K"),
-            ("ABAMK", "BREAM", "abamkab_m_"),
-            ("WHOSE", "WORSE", "WhoSEW_oSE"),
-            ("WORSE", "WHOSE", "WorSEWo_SE"),
+            ("ABACK", "BREAD", "yy___"),
+            ("ABACK", "BREAK", "yy__g"),
+            ("ABACK", "BREAM", "yy___"),
+            ("ABAMK", "BREAD", "yy___"),
+            ("ABAMK", "BREAK", "yy__g"),
+            ("ABAMK", "BREAM", "yy_y_"),
+            ("WHOSE", "WORSE", "g_ygg"),
+            ("WORSE", "WHOSE", "gy_gg"),
         ];
 
-        for (guess, solution, expected) in test_cases {
+        for (guess_str, solution, expected) in test_cases {
+            let guess_chars = WordClue::make_word_chars(guess_str);
             assert_eq!(
-                WordClue::new_from_guess_n_solution(guess, solution)
+                WordClue::new_from_guess_n_solution(guess_chars, solution)
                     .word_clue
                     .iter()
                     .map(|clue| clue.to_string())
@@ -218,54 +219,53 @@ mod tests {
     #[test]
     fn filter_matches_python_cases() {
         let test_cases = [
-            ("BACxx", "BACON", true),
-            ("xALEx", "VALET", true),
-            ("xALEx", "PALER", true),
-            ("xALEx", "BALER", true),
-            ("xALEx", "PALED", true),
-            ("xALEb____b", "BALER", true),
-            ("xALEb____b", "BALED", true),
-            ("xalek_alek", "SALEK", false),
-            ("xalek_alek", "ALIKE", true),
-            ("xalek_alek", "ANKLE", true),
-            ("xalek_alek", "FLAKE", true),
-            ("xalek_alek", "LEAKY", true),
-            ("xalek_alek", "SLAKE", true),
-            ("xkela_kela", "SALEK", true),
-            ("xkela_kela", "ALIKE", true),
-            ("xkela_kela", "FLAKE", true),
-            ("xkela_kela", "LEAKY", true),
-            ("xkela_kela", "SLAKE", true),
-            ("xkela_kela", "LATKE", true),
-            ("AlekxAlek", "ANKLE", true),
-            ("abackab", "BREAD", true),
-            ("abacKab", "BREAK", true),
-            ("abackab", "BREAM", true),
-            ("abacKab", "ABACK", false),
-            ("abacK__ac_", "ABACK", false),
-            ("abamkab", "BREAD", true),
-            ("abamKab", "BREAK", true),
-            ("abamkab_m", "BREAM", true),
-            ("BREAd____d", "BREAD", false),
-            ("BREAd", "BREAK", true),
-            ("BREAd", "BREAM", true),
-            ("WhoSE", "WORSE", false),
-            ("WhoSE__o", "WORSE", true),
-            ("WorSE", "WHOSE", false),
-            ("WorSE_o", "WHOSE", true),
-            ("pooli_oo", "POOLS", false),
-            ("oxxoxo__o", "POOLS", true),
-            ("oxoxxo_o", "POOLS", false),
-            ("oxOxxo", "POOLS", true),
-            ("oxxooo__oo", "POOLS", false),
-            ("BREAd____d", "POOLS", false),
+            ("BACxxggg", "BACON", true),
+            ("xALEx_ggg", "VALET", true),
+            ("xALEx_ggg", "PALER", true),
+            ("xALEx_ggg_", "BALER", true),
+            ("xALEx_ggg", "PALED", true),
+            ("xALEb_gggy", "BALER", true),
+            ("xALEb_gggy", "BALED", true),
+            ("xalek_yyyy", "SALEK", false),
+            ("xalek_yyyy", "ALIKE", true),
+            ("xalek_yyyy", "ANKLE", true),
+            ("xalek_yyyy", "FLAKE", true),
+            ("xalek_yyyy", "LEAKY", true),
+            ("xalek_yyyy", "SLAKE", true),
+            ("xkela_yyyy", "SALEK", true),
+            ("xkela_yyyy", "ALIKE", true),
+            ("xkela_yyyy", "FLAKE", true),
+            ("xkela_yyyy", "LEAKY", true),
+            ("xkela_yyyy", "SLAKE", true),
+            ("xkela_yyyy", "LATKE", true),
+            ("Alekxgyyy", "ANKLE", true),
+            ("abackyy", "BREAD", true),
+            ("abacKyy__g", "BREAK", true),
+            ("abackyy__", "BREAM", true),
+            ("abacKyy__g", "ABACK", false),
+            ("abacK__yyg", "ABACK", false),
+            ("abamkyy", "BREAD", true),
+            ("abamKyy__g", "BREAK", true),
+            ("abamkyy_y", "BREAM", true),
+            ("BREAd____y", "BREAD", false),
+            ("BREAdgggg", "BREAK", true),
+            ("BREAdgggg", "BREAM", true),
+            ("WhoSEg__gg", "WORSE", false),
+            ("WhoSEg_ygg", "WORSE", true),
+            ("WorSEg__gg", "WHOSE", false),
+            ("WorSEgy_gg", "WHOSE", true),
+            ("pooli_yy", "POOLS", false),
+            ("oxxoxy__y", "POOLS", true),
+            ("oxoxxy_y", "POOLS", false),
+            ("oxOxxy_g", "POOLS", true),
+            ("oxxoyy__yy", "POOLS", false),
         ];
 
         for (filter_str, candidate, expected) in test_cases {
-            let filter = Filter::make_filter(filter_str).unwrap();
+            let (guess, word_clue) = WordClue::new_from_guess_n_clue_str(filter_str);
             eprintln!("Filter: {filter_str}, Candidate: {candidate}, Expected: {expected}");
             assert_eq!(
-                filter.make_filter_func()(candidate),
+                word_clue.is_match(guess, candidate),
                 expected,
                 "Filter {filter_str}"
             );
