@@ -5,6 +5,8 @@ mod solver;
 use simulator::{BEST_INITIAL_GUESS, GameSim};
 use solver::{DEFAULT_GUESSES_FILE, DEFAULT_SOLUTIONS_FILE, Solver, resolve_default_path};
 
+use crate::filter::to_string;
+
 fn main() {
     if let Err(error) = run() {
         eprintln!("Error: {error}");
@@ -92,7 +94,7 @@ fn run() -> Result<(), String> {
             solver
                 .filtered_sols
                 .iter()
-                .map(|s| s.iter().collect::<String>())
+                .map(|s| to_string(s))
                 .collect::<Vec<_>>()
                 .join(", ")
         );
@@ -101,11 +103,7 @@ fn run() -> Result<(), String> {
     let best_list = solver.find_best_guess(hard_mode, reverse)?;
     print!("Best guesses: ");
     for (guess_chars, entropy) in best_list.into_iter().take(10) {
-        print!(
-            "{}({:.2}), ",
-            guess_chars.iter().collect::<String>(),
-            entropy
-        );
+        print!("{}({:.2}), ", to_string(&guess_chars), entropy);
     }
     println!();
 

@@ -2,6 +2,10 @@ pub const WORD_LENGTH: usize = 5;
 
 pub type WordChars = [char; WORD_LENGTH];
 
+pub fn to_string(word_chars: &WordChars) -> String {
+    word_chars.iter().collect::<String>()
+}
+
 #[repr(usize)]
 #[derive(Clone, Copy, Debug)]
 /// Represents a single clue for a letter in a guess, which can be green, yellow, or gray (underscore).
