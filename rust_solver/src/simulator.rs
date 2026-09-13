@@ -51,10 +51,12 @@ impl GameSim {
         self.solver
             .filter_by_guess_n_solution(initial_guess, self.solution)?;
         let mut guesses = vec![(initial_guess, self.solver.len().to_string())];
-        println!(
-            "After first guess {initial_guess_str} Solutions: {}",
-            self.solver.len()
-        );
+        if self.verbosity >= 1 {
+            println!(
+                "After first guess {initial_guess_str} Solutions: {}",
+                self.solver.len()
+            );
+        }
         while !self.solver.is_empty() {
             let ranked_guesses = self.solver.find_best_guess(false, false)?;
             let (best_str, _entropy) = &ranked_guesses[0];

@@ -3,7 +3,6 @@
 # Result lines: 3209
 # Average steps: 3.94
 
-# [100.00% after 607.12s done in 0.00s] avg=3.94=12657/3209 
 # ALL solutions could be found in 6 guesses or less
 #
 # Results grouped by steps:
@@ -14,7 +13,9 @@
 #       5         532    16.58%
 #       6          67     2.09%
 #   Total        3209   100.00%
-  
+
+# [100.00% after 607.12s done in 0.00s] avg=3.94=12657/3209
+
 ABACK, 4, QUAKE(37), CLANS(5), WRACK(1), ABACK(*)
 ABASE, 4, QUAKE(83), CRITS(11), LYMPH(1), ABASE(*)
 ABASH, 4, QUAKE(161), SHIRT(5), AWFUL(1), ABASH(*)
