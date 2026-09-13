@@ -3,8 +3,6 @@ Total lines: 3209
 Result lines: 3209
 Average steps: 3.61
 
-[100.00% after 32.53s done in 0.00s] avg=3.61=11576/3209
-
 Results grouped by steps:
   Steps   Solutions   Percent
       2          74     2.31%
@@ -14,6 +12,8 @@ Results grouped by steps:
       6          16     0.50%
   Total        3209   100.00%
   
+[100.00% after 32.53s done in 0.00s] avg=3.61=11576/3209
+
 ABACK, 3, SLATE(60), CHURN(1), ABACK(*)
 ABASE, 3, SLATE(6), BEECH(1), ABASE(*)
 ABASH, 3, SLATE(14), BOUGH(1), ABASH(*)

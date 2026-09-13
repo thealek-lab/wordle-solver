@@ -149,7 +149,9 @@ impl GameSim {
             if completed.contains(solution) {
                 continue;
             }
-            println!("Testing solution {}", to_string(solution));
+            if self.verbosity >= 1 {
+                println!("Testing solution {}", to_string(solution));
+            }
             self.solution = *solution;
 
             let result = self.run(initial_guess_str)?;
