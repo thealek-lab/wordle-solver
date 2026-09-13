@@ -3,12 +3,13 @@ use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::time::Instant;
 
+use crate::filter::{WordChars, WordClue};
 use crate::solver::{DEFAULT_SOLUTIONS_FILE, Solver, resolve_default_path};
 
 pub const BEST_INITIAL_GUESS: &str = "SLATE";
 
 pub struct GameSim {
-    solution: String,
+    solution: WordChars,
     verbosity: u32,
     solver: Solver,
 }
@@ -19,7 +20,7 @@ impl GameSim {
             println!("Creating GameSim with hidden solution {solution}");
         }
 
-        let solution = solution.to_uppercase();
+        let solution = WordClue::make_word_chars(solution);
 
         let solver = Solver::new(
             &resolve_default_path(DEFAULT_SOLUTIONS_FILE),
@@ -28,7 +29,8 @@ impl GameSim {
         )?;
         if !solver.all_solutions.contains(&solution) {
             return Err(format!(
-                "Invalid solution {solution} is not in the official list!"
+                "Invalid solution {:?} is not in the official list!",
+                solution
             ));
         }
 
@@ -39,14 +41,16 @@ impl GameSim {
         })
     }
 
-    pub fn run(&mut self, initial_guess_str: &str) -> Result<Vec<(String, String)>, String> {
+    pub fn run(&mut self, initial_guess_str: &str) -> Result<Vec<(WordChars, String)>, String> {
         let start_time = Instant::now();
+
+        let initial_guess = WordClue::make_word_chars(initial_guess_str);
 
         self.solver.filtered_sols = self.solver.all_solutions.clone();
 
         self.solver
-            .filter_by_guess_n_solution(initial_guess_str, &self.solution)?;
-        let mut guesses = vec![(initial_guess_str.to_string(), self.solver.len().to_string())];
+            .filter_by_guess_n_solution(initial_guess, self.solution)?;
+        let mut guesses = vec![(initial_guess, self.solver.len().to_string())];
         println!(
             "After first guess {initial_guess_str} Solutions: {}",
             self.solver.len()
@@ -55,10 +59,10 @@ impl GameSim {
             let ranked_guesses = self.solver.find_best_guess(false, false)?;
             let (best_str, _entropy) = &ranked_guesses[0];
             self.solver
-                .filter_by_guess_n_solution(best_str, &self.solution)?;
-            guesses.push((best_str.clone(), self.solver.len().to_string()));
+                .filter_by_guess_n_solution(*best_str, self.solution)?;
+            guesses.push((*best_str, self.solver.len().to_string()));
             println!(
-                "After guess {} {} Solutions: {}",
+                "After guess {} {:?} Solutions: {}",
                 guesses.len(),
                 best_str,
                 self.solver.len()
@@ -67,7 +71,7 @@ impl GameSim {
                 println!("   {:?}", self.solver.filtered_sols);
             }
             if self.solver.len() == 1 {
-                let solution = self.solver.filtered_sols[0].clone();
+                let solution = self.solver.filtered_sols[0];
                 if guesses.last().unwrap().0 != solution {
                     guesses.push((solution, "*".to_owned()));
                 }
@@ -91,7 +95,7 @@ impl GameSim {
             Ok(guesses)
         } else {
             Err(format!(
-                "Cannot find solution {}: best guess {:?}!",
+                "Cannot find solution {:?}: best guess {:?}!",
                 self.solution,
                 guesses.last()
             ))
@@ -100,19 +104,19 @@ impl GameSim {
 
     pub fn calculate_initial_guess_performance_from(
         &mut self,
-        initial_guess: &str,
+        initial_guess_str: &str,
         resume_file: Option<&str>,
     ) -> Result<(), String> {
-        let initial_guess = initial_guess.to_uppercase();
+        let initial_guess = WordClue::make_word_chars(initial_guess_str);
 
         if !self.solver.all_guesses.contains(&initial_guess) {
             return Err(format!(
-                "Initial guess '{initial_guess}' is not in guess list!"
+                "Initial guess '{initial_guess_str}' is not in guess list!"
             ));
         }
         let file_name = resume_file
             .map(str::to_owned)
-            .unwrap_or_else(|| format!("wordle_initial_guess_{initial_guess}_results.txt"));
+            .unwrap_or_else(|| format!("wordle_initial_guess_{initial_guess_str}_results.txt"));
         let (completed, mut total_steps) = match resume_file {
             Some(path) => read_completed_results(path, &self.solver.all_solutions)?,
             None => (HashSet::new(), 0),
@@ -133,14 +137,14 @@ impl GameSim {
             if completed.contains(solution) {
                 continue;
             }
-            println!("Testing solution {solution}");
-            self.solution = solution.clone();
+            println!("Testing solution {solution:?}");
+            self.solution = *solution;
 
-            let result = self.run(&initial_guess)?;
+            let result = self.run(initial_guess_str)?;
             total_steps += result.len();
-            let mut line = format!("{solution}, {}", result.len());
+            let mut line = format!("{solution:?}, {}", result.len());
             for (guess, count) in result {
-                line.push_str(&format!(", {guess}({count})"));
+                line.push_str(&format!(", {:?}({count})", guess));
             }
             writeln!(output, "{line}")
                 .map_err(|error| format!("Could not write {file_name}: {error}"))?;
@@ -162,8 +166,8 @@ impl GameSim {
 
 fn read_completed_results(
     file_name: &str,
-    all_solutions: &[String],
-) -> Result<(HashSet<String>, usize), String> {
+    all_solutions: &[WordChars],
+) -> Result<(HashSet<WordChars>, usize), String> {
     let contents = std::fs::read_to_string(file_name)
         .map_err(|error| format!("Could not read resume file {file_name}: {error}"))?;
     let solution_set: HashSet<_> = all_solutions.iter().collect();
@@ -177,12 +181,15 @@ fn read_completed_results(
                 line_number + 1
             ));
         }
-        let solution = fields[0].to_uppercase();
+        let solution = WordClue::make_word_chars(fields[0]);
         if !solution_set.contains(&solution) {
-            return Err(format!("Unknown solution '{solution}' in {file_name}"));
+            return Err(format!("Unknown solution '{:?}' in {file_name}", solution));
         }
-        if !completed.insert(solution.clone()) {
-            return Err(format!("Duplicate solution '{solution}' in {file_name}"));
+        if !completed.insert(solution) {
+            return Err(format!(
+                "Duplicate solution '{:?}' in {file_name}",
+                solution
+            ));
         }
         total_steps += fields[1].parse::<usize>().map_err(|error| {
             format!(

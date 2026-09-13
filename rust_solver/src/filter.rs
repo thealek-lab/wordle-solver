@@ -1,6 +1,6 @@
 pub const WORD_LENGTH: usize = 5;
 
-type WordChars = [char; WORD_LENGTH];
+pub type WordChars = [char; WORD_LENGTH];
 
 #[repr(usize)]
 #[derive(Clone, Copy, Debug)]
@@ -95,33 +95,6 @@ impl WordClue {
             .unwrap()
     }
 
-    pub fn new_from_guess_n_solution(guess_chars: WordChars, solution: &str) -> Self {
-        let solution_chars = Self::make_word_chars(solution);
-
-        let mut char_clues = [SingleClue::Gray; WORD_LENGTH];
-        let mut remaining = [true; WORD_LENGTH];
-
-        for (index, &guess_char) in guess_chars.iter().enumerate() {
-            if guess_char == solution_chars[index] {
-                char_clues[index] = SingleClue::Green;
-                remaining[index] = false;
-            }
-        }
-
-        for index in 0..WORD_LENGTH {
-            if let SingleClue::Gray = char_clues[index]
-                && let Some(position) = (0..WORD_LENGTH).find(|&position| {
-                    remaining[position] && solution_chars[position] == guess_chars[index]
-                })
-            {
-                char_clues[index] = SingleClue::Yellow;
-                remaining[position] = false;
-            }
-        }
-
-        Self::new_from_char_clues(char_clues)
-    }
-
     pub fn new_from_guess_n_clue_str(guess_and_clue_str: &str) -> (WordChars, Self) {
         let str_len = guess_and_clue_str.len();
         assert!(
@@ -169,9 +142,7 @@ impl WordClue {
         pattern.iter().fold(0, |key, &value| key * 3 + value)
     }
 
-    pub fn is_match(&self, guess_chars: WordChars, solution_str: &str) -> bool {
-        let solution_chars = Self::make_word_chars(solution_str);
-
+    pub fn is_match(&self, guess_chars: WordChars, solution_chars: WordChars) -> bool {
         Self::calc_val_from_guess_n_solution(guess_chars, &solution_chars) == self.val
     }
 }
@@ -191,33 +162,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn hint_matches_python_cases() {
-        let test_cases = [
-            ("ABACK", "BREAD", "yy___"),
-            ("ABACK", "BREAK", "yy__g"),
-            ("ABACK", "BREAM", "yy___"),
-            ("ABAMK", "BREAD", "yy___"),
-            ("ABAMK", "BREAK", "yy__g"),
-            ("ABAMK", "BREAM", "yy_y_"),
-            ("WHOSE", "WORSE", "g_ygg"),
-            ("WORSE", "WHOSE", "gy_gg"),
-        ];
-
-        for (guess_str, solution, expected) in test_cases {
-            let guess_chars = WordClue::make_word_chars(guess_str);
-            assert_eq!(
-                WordClue::new_from_guess_n_solution(guess_chars, solution)
-                    .word_clue
-                    .iter()
-                    .map(|clue| clue.to_string())
-                    .collect::<String>(),
-                expected
-            );
-        }
-    }
-
-    #[test]
-    fn filter_matches_python_cases() {
+    fn test_filter_matches() {
         let test_cases = [
             ("BACxxggg", "BACON", true),
             ("xALEx_ggg", "VALET", true),
@@ -265,7 +210,7 @@ mod tests {
             let (guess, word_clue) = WordClue::new_from_guess_n_clue_str(filter_str);
             eprintln!("Filter: {filter_str}, Candidate: {candidate}, Expected: {expected}");
             assert_eq!(
-                word_clue.is_match(guess, candidate),
+                word_clue.is_match(guess, WordClue::make_word_chars(candidate)),
                 expected,
                 "Filter {filter_str}"
             );

@@ -87,13 +87,25 @@ fn run() -> Result<(), String> {
     let num_sols = solver.len();
     println!("Filtered Solutions: {num_sols}");
     if num_sols > 0 && (solver.verbosity >= 2 || num_sols <= 10) {
-        println!("{:?}", solver.filtered_sols);
+        println!(
+            "{}",
+            solver
+                .filtered_sols
+                .iter()
+                .map(|s| s.iter().collect::<String>())
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
     }
 
     let best_list = solver.find_best_guess(hard_mode, reverse)?;
     print!("Best guesses: ");
-    for guess in best_list.into_iter().take(10) {
-        print!("{}({:.2}), ", guess.0, guess.1);
+    for (guess_chars, entropy) in best_list.into_iter().take(10) {
+        print!(
+            "{}({:.2}), ",
+            guess_chars.iter().collect::<String>(),
+            entropy
+        );
     }
     println!();
 

@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
 
-use crate::filter::WordClue;
+use crate::filter::{WORD_LENGTH, WordChars, WordClue};
 
 pub const DEFAULT_SOLUTIONS_FILE: &str = "./solutions.txt";
 pub const DEFAULT_GUESSES_FILE: &str = "./all_guesses_2022_11K.txt";
@@ -17,9 +17,9 @@ pub fn resolve_default_path(file_name: &str) -> String {
 
 pub struct Solver {
     pub verbosity: u32,
-    pub all_solutions: Vec<String>,
-    pub filtered_sols: Vec<String>,
-    pub all_guesses: Vec<String>,
+    pub all_solutions: Vec<WordChars>,
+    pub filtered_sols: Vec<WordChars>,
+    pub all_guesses: Vec<WordChars>,
 }
 
 impl Solver {
@@ -58,6 +58,16 @@ impl Solver {
             println!("All Possible Guesses: {}", all_guesses.len());
         }
 
+        let all_solutions = all_solutions
+            .iter()
+            .map(|solution| WordClue::make_word_chars(solution))
+            .collect::<Vec<_>>();
+
+        let all_guesses = all_guesses
+            .iter()
+            .map(|guess| WordClue::make_word_chars(guess))
+            .collect::<Vec<_>>();
+
         Ok(Self {
             verbosity,
             filtered_sols: all_solutions.clone(),
@@ -81,7 +91,7 @@ impl Solver {
         for guess_n_clue_str in guess_n_clue_list {
             let (guess_chars, word_clue) = WordClue::new_from_guess_n_clue_str(guess_n_clue_str);
             self.filtered_sols
-                .retain(|maybe_sol: &String| word_clue.is_match(guess_chars, maybe_sol));
+                .retain(|maybe_sol: &WordChars| word_clue.is_match(guess_chars, *maybe_sol));
         }
         self.filtered_sols.sort();
         Ok(())
@@ -89,15 +99,14 @@ impl Solver {
 
     pub fn filter_by_guess_n_solution(
         &mut self,
-        guess_str: &str,
-        solution: &str,
+        guess_chars: WordChars,
+        sol_chars: WordChars,
     ) -> Result<(), String> {
-        let guess_chars = WordClue::make_word_chars(guess_str);
-        let word_clue = WordClue::new_from_guess_n_solution(guess_chars, solution);
-        self.filtered_sols
-            .retain(|maybe_sol: &String| word_clue.is_match(guess_chars, maybe_sol));
+        let sol_clue = WordClue::calc_val_from_guess_n_solution(guess_chars, sol_chars.as_slice());
+        self.filtered_sols.retain(|maybe_sol: &WordChars| {
+            WordClue::calc_val_from_guess_n_solution(guess_chars, maybe_sol) == sol_clue
+        });
 
-        self.filtered_sols.sort();
         Ok(())
     }
 
@@ -105,14 +114,14 @@ impl Solver {
         &self,
         hard_mode: bool,
         reverse: bool,
-    ) -> Result<Vec<(String, f64)>, String> {
+    ) -> Result<Vec<(WordChars, f64)>, String> {
         let num_sols = self.filtered_sols.len();
         if num_sols == 0 {
             return Err("No solutions left to guess from".to_owned());
         }
 
         if num_sols == 1 {
-            return Ok(vec![(self.filtered_sols[0].clone(), 0.0)]);
+            return Ok(vec![(self.filtered_sols[0], 0.0)]);
         }
 
         let guess_list = if hard_mode {
@@ -125,16 +134,12 @@ impl Solver {
         }
 
         let mut best_entropy = 0.0;
-        let mut best_guess = "<None>".to_string();
+        let mut best_guess = ['a'; WORD_LENGTH]; // dummy value
         let mut best_in_sols = false;
-        for guess_str in guess_list {
-            let guess_bytes = WordClue::make_word_chars(guess_str);
+        for guess_chars in guess_list {
             let mut buckets = [0usize; 243];
             for answer in &self.filtered_sols {
-                let feedback = WordClue::calc_val_from_guess_n_solution(
-                    guess_bytes,
-                    answer.chars().collect::<Vec<_>>().as_slice(),
-                );
+                let feedback = WordClue::calc_val_from_guess_n_solution(*guess_chars, answer);
                 buckets[feedback] += 1;
             }
             let entropy = buckets.into_iter().fold(0.0, |total, size| {
@@ -148,14 +153,14 @@ impl Solver {
 
             if entropy > best_entropy {
                 best_entropy = entropy;
-                best_guess = guess_str.clone();
+                best_guess = *guess_chars;
                 best_in_sols = self.filtered_sols.contains(&best_guess);
             } else if entropy == best_entropy
                 && !best_in_sols
-                && self.filtered_sols.contains(guess_str)
+                && self.filtered_sols.contains(guess_chars)
             {
                 best_entropy = entropy;
-                best_guess = guess_str.clone();
+                best_guess = *guess_chars;
                 best_in_sols = true;
             }
         }
