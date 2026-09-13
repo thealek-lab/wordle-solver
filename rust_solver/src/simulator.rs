@@ -3,7 +3,6 @@ use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::time::Instant;
 
-use crate::filter::WordClue;
 use crate::solver::{DEFAULT_SOLUTIONS_FILE, Solver, resolve_default_path};
 
 pub const BEST_INITIAL_GUESS: &str = "SLATE";
@@ -45,12 +44,8 @@ impl GameSim {
 
         self.solver.filtered_sols = self.solver.all_solutions.clone();
 
-        let initial_guess = WordClue::make_word_chars(initial_guess_str);
-        let mut clues = vec![WordClue::new_from_guess_n_solution(
-            initial_guess,
-            &self.solution,
-        )];
-        self.solver.filter(initial_guess_str, &clues)?;
+        self.solver
+            .filter_by_guess_n_solution(initial_guess_str, &self.solution)?;
         let mut guesses = vec![(initial_guess_str.to_string(), self.solver.len().to_string())];
         println!(
             "After first guess {initial_guess_str} Solutions: {}",
@@ -59,12 +54,8 @@ impl GameSim {
         while !self.solver.is_empty() {
             let ranked_guesses = self.solver.find_best_guess(false, false)?;
             let (best_str, _entropy) = &ranked_guesses[0];
-            let best_guess = WordClue::make_word_chars(best_str);
-            clues.push(WordClue::new_from_guess_n_solution(
-                best_guess,
-                &self.solution,
-            ));
-            self.solver.filter(best_str, &clues)?;
+            self.solver
+                .filter_by_guess_n_solution(best_str, &self.solution)?;
             guesses.push((best_str.clone(), self.solver.len().to_string()));
             println!(
                 "After guess {} {} Solutions: {}",

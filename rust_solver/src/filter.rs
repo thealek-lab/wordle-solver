@@ -27,7 +27,7 @@ impl std::fmt::Display for SingleClue {
     }
 }
 /// Represents a word clue value, which is a number between 0 and 242 (3^5 - 1) that encodes the possible clues for a guess.
-type WordClueVal = usize;
+pub type WordClueVal = usize;
 type CharClues = [SingleClue; WORD_LENGTH];
 
 #[derive(Debug)]
@@ -257,8 +257,8 @@ mod tests {
             ("pooli_yy", "POOLS", false),
             ("oxxoxy__y", "POOLS", true),
             ("oxoxxy_y", "POOLS", false),
-            ("oxOxxy_g", "POOLS", true),
-            ("oxxoyy__yy", "POOLS", false),
+            ("OXOXXy_g", "POOLS", true),
+            ("OXXOOy__yy", "POOLS", false),
         ];
 
         for (filter_str, candidate, expected) in test_cases {

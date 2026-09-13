@@ -74,7 +74,7 @@ impl Solver {
         self.filtered_sols.is_empty()
     }
 
-    pub fn filter_by_guess_n_clue_str(
+    pub fn filter_by_guess_n_clue_list(
         &mut self,
         guess_n_clue_list: &[String],
     ) -> Result<(), String> {
@@ -87,12 +87,16 @@ impl Solver {
         Ok(())
     }
 
-    pub fn filter(&mut self, guess_str: &str, clue_list: &[WordClue]) -> Result<(), String> {
+    pub fn filter_by_guess_n_solution(
+        &mut self,
+        guess_str: &str,
+        solution: &str,
+    ) -> Result<(), String> {
         let guess_chars = WordClue::make_word_chars(guess_str);
-        for word_clue in clue_list {
-            self.filtered_sols
-                .retain(|maybe_sol: &String| word_clue.is_match(guess_chars, maybe_sol));
-        }
+        let word_clue = WordClue::new_from_guess_n_solution(guess_chars, solution);
+        self.filtered_sols
+            .retain(|maybe_sol: &String| word_clue.is_match(guess_chars, maybe_sol));
+
         self.filtered_sols.sort();
         Ok(())
     }

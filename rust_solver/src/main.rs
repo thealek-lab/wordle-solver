@@ -83,7 +83,7 @@ fn run() -> Result<(), String> {
     if filters.is_empty() {
         return Ok(());
     }
-    solver.filter_by_guess_n_clue_str(&filters)?;
+    solver.filter_by_guess_n_clue_list(&filters)?;
     let num_sols = solver.len();
     println!("Filtered Solutions: {num_sols}");
     if num_sols > 0 && (solver.verbosity >= 2 || num_sols <= 10) {
