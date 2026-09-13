@@ -109,13 +109,13 @@ impl WordClue {
         }
 
         for index in 0..WORD_LENGTH {
-            if let SingleClue::Gray = char_clues[index] {
-                if let Some(position) = (0..WORD_LENGTH).find(|&position| {
+            if let SingleClue::Gray = char_clues[index]
+                && let Some(position) = (0..WORD_LENGTH).find(|&position| {
                     remaining[position] && solution_chars[position] == guess_chars[index]
-                }) {
-                    char_clues[index] = SingleClue::Yellow;
-                    remaining[position] = false;
-                }
+                })
+            {
+                char_clues[index] = SingleClue::Yellow;
+                remaining[position] = false;
             }
         }
 
@@ -123,17 +123,29 @@ impl WordClue {
     }
 
     pub fn new_from_guess_n_clue_str(guess_and_clue_str: &str) -> (WordChars, Self) {
+        let str_len = guess_and_clue_str.len();
         assert!(
-            guess_and_clue_str.len() == 2 * WORD_LENGTH,
-            "Guess+clue string '{guess_and_clue_str}' is not 10 characters long!"
+            str_len >= WORD_LENGTH,
+            "Guess+clue string '{guess_and_clue_str}' is less than 5 characters long!"
         );
+        assert!(
+            str_len <= 2 * WORD_LENGTH,
+            "Guess+clue string '{guess_and_clue_str}' is more than 10 characters long!"
+        );
+
+        let mut guess_and_clue_str = guess_and_clue_str.to_string();
+        if str_len < 2 * WORD_LENGTH {
+            let unknown_char_as_str = SingleClue::UNKNOWN_CHAR.to_string();
+            // Add a bunch of underscores to the end of the string to make it 10 characters long
+            guess_and_clue_str.push_str(&unknown_char_as_str.repeat(2 * WORD_LENGTH - str_len));
+        }
 
         let (guess_str, clue_str) = guess_and_clue_str.split_at(WORD_LENGTH);
         let guess_chars = Self::make_word_chars(guess_str);
         (guess_chars, Self::new_from_clue_str(clue_str))
     }
 
-    fn calc_val_from_guess_n_solution(guess: WordChars, solution: &[char]) -> WordClueVal {
+    pub fn calc_val_from_guess_n_solution(guess: WordChars, solution: &[char]) -> WordClueVal {
         let mut pattern = [SingleClue::Gray as usize; WORD_LENGTH];
         let mut remaining = [true; WORD_LENGTH];
 
@@ -145,13 +157,12 @@ impl WordClue {
         }
 
         for index in 0..WORD_LENGTH {
-            if pattern[index] == SingleClue::Gray as usize {
-                if let Some(position) = (0..WORD_LENGTH)
+            if pattern[index] == SingleClue::Gray as usize
+                && let Some(position) = (0..WORD_LENGTH)
                     .find(|&position| remaining[position] && solution[position] == guess[index])
-                {
-                    pattern[index] = SingleClue::Yellow as usize;
-                    remaining[position] = false;
-                }
+            {
+                pattern[index] = SingleClue::Yellow as usize;
+                remaining[position] = false;
             }
         }
 

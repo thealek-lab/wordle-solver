@@ -123,14 +123,14 @@ impl Solver {
         let mut best_entropy = 0.0;
         let mut best_guess = "<None>".to_string();
         let mut best_in_sols = false;
-        for guess in guess_list {
-            let guess_bytes = guess
-                .as_bytes()
-                .try_into()
-                .expect("Guess is not 5 characters long");
+        for guess_str in guess_list {
+            let guess_bytes = WordClue::make_word_chars(guess_str);
             let mut buckets = [0usize; 243];
             for answer in &self.filtered_sols {
-                let feedback = feedback_key(guess_bytes, answer.as_bytes());
+                let feedback = WordClue::calc_val_from_guess_n_solution(
+                    guess_bytes,
+                    answer.chars().collect::<Vec<_>>().as_slice(),
+                );
                 buckets[feedback] += 1;
             }
             let entropy = buckets.into_iter().fold(0.0, |total, size| {
@@ -144,14 +144,15 @@ impl Solver {
 
             if entropy > best_entropy {
                 best_entropy = entropy;
-                best_guess = guess.clone();
+                best_guess = guess_str.clone();
                 best_in_sols = self.filtered_sols.contains(&best_guess);
-            } else if entropy == best_entropy {
-                if !best_in_sols && self.filtered_sols.contains(guess) {
-                    best_entropy = entropy;
-                    best_guess = guess.clone();
-                    best_in_sols = true;
-                }
+            } else if entropy == best_entropy
+                && !best_in_sols
+                && self.filtered_sols.contains(guess_str)
+            {
+                best_entropy = entropy;
+                best_guess = guess_str.clone();
+                best_in_sols = true;
             }
         }
 
@@ -196,29 +197,4 @@ fn ensure_unique(words: &[String], kind: &str, file_name: &str) -> Result<(), St
 fn sorted(mut words: Vec<String>) -> Vec<String> {
     words.sort();
     words
-}
-
-fn feedback_key(guess: &[u8; 5], solution: &[u8]) -> usize {
-    let mut pattern = [0usize; 5];
-    let mut remaining = [true; 5];
-
-    for index in 0..5 {
-        if guess[index] == solution[index] {
-            pattern[index] = 2;
-            remaining[index] = false;
-        }
-    }
-
-    for index in 0..5 {
-        if pattern[index] == 0 {
-            if let Some(position) =
-                (0..5).find(|&position| remaining[position] && solution[position] == guess[index])
-            {
-                pattern[index] = 1;
-                remaining[position] = false;
-            }
-        }
-    }
-
-    pattern.iter().fold(0, |key, &value| key * 3 + value)
 }

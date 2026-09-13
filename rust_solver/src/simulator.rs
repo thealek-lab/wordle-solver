@@ -24,7 +24,7 @@ impl GameSim {
 
         let solver = Solver::new(
             &resolve_default_path(DEFAULT_SOLUTIONS_FILE),
-            &guesses_file,
+            guesses_file,
             verbosity,
         )?;
         if !solver.all_solutions.contains(&solution) {
@@ -50,7 +50,7 @@ impl GameSim {
             initial_guess,
             &self.solution,
         )];
-        self.solver.filter(&initial_guess_str, &clues)?;
+        self.solver.filter(initial_guess_str, &clues)?;
         let mut guesses = vec![(initial_guess_str.to_string(), self.solver.len().to_string())];
         println!(
             "After first guess {initial_guess_str} Solutions: {}",
