@@ -29,8 +29,8 @@ impl GameSim {
         )?;
         if !solver.all_solutions.contains(&solution) {
             return Err(format!(
-                "Invalid solution {:?} is not in the official list!",
-                solution
+                "Invalid solution {} is not in the official list!",
+                solution.iter().collect::<String>()
             ));
         }
 
@@ -61,14 +61,24 @@ impl GameSim {
             self.solver
                 .filter_by_guess_n_solution(*best_str, self.solution)?;
             guesses.push((*best_str, self.solver.len().to_string()));
-            println!(
-                "After guess {} {:?} Solutions: {}",
-                guesses.len(),
-                best_str,
-                self.solver.len()
-            );
-            if !self.solver.is_empty() && (self.verbosity >= 2 || self.solver.len() <= 10) {
-                println!("   {:?}", self.solver.filtered_sols);
+            if self.verbosity >= 1 {
+                println!(
+                    "After guess {} {} Solutions: {}",
+                    guesses.len(),
+                    best_str.iter().collect::<String>(),
+                    self.solver.len()
+                );
+            }
+            if self.verbosity >= 2 && !self.solver.is_empty() && self.solver.len() <= 10 {
+                println!(
+                    "   {}",
+                    self.solver
+                        .filtered_sols
+                        .iter()
+                        .map(|s| s.iter().collect::<String>())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                );
             }
             if self.solver.len() == 1 {
                 let solution = self.solver.filtered_sols[0];
@@ -88,16 +98,16 @@ impl GameSim {
             .unwrap_or(false)
         {
             println!(
-                "Found solution {:?} in {} steps after {elapsed:.2}s!",
-                guesses.last().unwrap(),
+                "Found solution {} in {} steps after {elapsed:.2}s!",
+                guesses.last().unwrap().0.iter().collect::<String>(),
                 guesses.len()
             );
             Ok(guesses)
         } else {
             Err(format!(
-                "Cannot find solution {:?}: best guess {:?}!",
-                self.solution,
-                guesses.last()
+                "Cannot find solution {}: best guess {}!",
+                self.solution.iter().collect::<String>(),
+                guesses.last().unwrap().0.iter().collect::<String>()
             ))
         }
     }
@@ -137,14 +147,14 @@ impl GameSim {
             if completed.contains(solution) {
                 continue;
             }
-            println!("Testing solution {solution:?}");
+            println!("Testing solution {}", solution.iter().collect::<String>());
             self.solution = *solution;
 
             let result = self.run(initial_guess_str)?;
             total_steps += result.len();
-            let mut line = format!("{solution:?}, {}", result.len());
+            let mut line = format!("{}, {}", solution.iter().collect::<String>(), result.len());
             for (guess, count) in result {
-                line.push_str(&format!(", {:?}({count})", guess));
+                line.push_str(&format!(", {}({count})", guess.iter().collect::<String>()));
             }
             writeln!(output, "{line}")
                 .map_err(|error| format!("Could not write {file_name}: {error}"))?;
@@ -183,12 +193,15 @@ fn read_completed_results(
         }
         let solution = WordClue::make_word_chars(fields[0]);
         if !solution_set.contains(&solution) {
-            return Err(format!("Unknown solution '{:?}' in {file_name}", solution));
+            return Err(format!(
+                "Unknown solution '{}' in {file_name}",
+                solution.iter().collect::<String>()
+            ));
         }
         if !completed.insert(solution) {
             return Err(format!(
-                "Duplicate solution '{:?}' in {file_name}",
-                solution
+                "Duplicate solution '{}' in {file_name}",
+                solution.iter().collect::<String>()
             ));
         }
         total_steps += fields[1].parse::<usize>().map_err(|error| {
