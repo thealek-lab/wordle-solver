@@ -64,7 +64,8 @@ impl GameSim {
                 self.solver.len()
             );
         }
-        while !self.solver.is_empty() {
+
+        while self.solver.len() > 1 {
             let ranked_guesses = self.solver.find_best_guess(false, false, 1)?;
             let score = &ranked_guesses[0];
             self.solver
