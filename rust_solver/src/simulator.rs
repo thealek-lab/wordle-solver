@@ -45,12 +45,15 @@ impl GameSim {
     pub fn run(&mut self, initial_guess_str: &str) -> Result<Vec<(GuessScore, usize)>, String> {
         let start_time = Instant::now();
 
+        let sol_chars = self.solution.word_chars;
+        let solution_str = self.solution.guess_str();
+
         let initial_guess = WordClue::make_word_chars(initial_guess_str);
 
         self.solver.filtered_sols = self.solver.all_solutions.clone();
 
         self.solver
-            .filter_by_guess_n_solution(initial_guess, self.solution.word_chars)?;
+            .filter_by_guess_n_solution(initial_guess, sol_chars)?;
         let mut guesses = vec![(
             GuessScore::new(initial_guess, 0.0, false),
             self.solver.len(),
@@ -65,7 +68,7 @@ impl GameSim {
             let ranked_guesses = self.solver.find_best_guess(false, false, 1)?;
             let score = &ranked_guesses[0];
             self.solver
-                .filter_by_guess_n_solution(score.word_chars, self.solution.word_chars)?;
+                .filter_by_guess_n_solution(score.word_chars, sol_chars)?;
             guesses.push((score.clone(), self.solver.len()));
             if self.verbosity >= 1 {
                 println!(
@@ -97,23 +100,21 @@ impl GameSim {
                 break;
             }
         }
+
         let elapsed = start_time.elapsed().as_secs_f64();
-        if guesses
-            .last()
-            .map(|guess| guess.0.word_chars == self.solution.word_chars)
-            .unwrap_or(false)
+        let last_guess = guesses.last();
+        if let Some((best_guess, _)) = last_guess
+            && best_guess.word_chars == sol_chars
         {
             println!(
-                "Found solution {} in {} steps after {elapsed:.2}s!",
-                self.solution.guess_str(),
+                "Found solution {solution_str} in {} steps after {elapsed:.2}s!",
                 guesses.len()
             );
             Ok(guesses)
         } else {
             Err(format!(
-                "Cannot find solution {}: best guess {}!",
-                self.solution.guess_str(),
-                guesses.last().unwrap().0.guess_str()
+                "Cannot find solution {solution_str}: best guess {}!",
+                last_guess.unwrap().0.guess_str()
             ))
         }
     }
