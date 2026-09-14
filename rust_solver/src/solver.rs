@@ -32,9 +32,10 @@ impl Solver {
             println!("Creating Solver with guesses {guesses_file_name}");
         }
 
-        let all_solutions = read_words(solution_file_name, true)?;
+        let mut all_solutions = read_words(solution_file_name, true)?;
         ensure_unique(&all_solutions, "solution", solution_file_name)?;
-        let all_solutions = sorted(all_solutions);
+        all_solutions.sort();
+        all_solutions.dedup();
 
         let mut all_guesses = if guesses_file_name.is_empty() {
             vec![]
@@ -43,6 +44,8 @@ impl Solver {
         };
         ensure_unique(&all_guesses, "guess", guesses_file_name)?;
         all_guesses.extend(all_solutions.iter().cloned());
+        all_guesses.sort();
+        all_guesses.dedup();
 
         for solution in &all_solutions {
             if !all_guesses.contains(solution) {
@@ -52,7 +55,6 @@ impl Solver {
             }
         }
 
-        let all_guesses = sorted(all_guesses);
         if verbosity >= 1 {
             println!("All Possible Solutions: {}", all_solutions.len());
             println!("All Possible Guesses: {}", all_guesses.len());
@@ -227,9 +229,4 @@ fn ensure_unique(words: &[String], kind: &str, file_name: &str) -> Result<(), St
         return Err(format!("Duplicate {kind} in {file_name}"));
     }
     Ok(())
-}
-
-fn sorted(mut words: Vec<String>) -> Vec<String> {
-    words.sort();
-    words
 }
