@@ -110,6 +110,23 @@ impl Solver {
         Ok(())
     }
 
+    pub fn calc_guess_entropy(&self, guess_chars: WordChars) -> f64 {
+        let num_sols = self.filtered_sols.len();
+        let mut buckets = [0usize; 243];
+        for answer in &self.filtered_sols {
+            let feedback = WordClue::calc_val_from_guess_n_solution(guess_chars, answer);
+            buckets[feedback] += 1;
+        }
+        buckets.into_iter().fold(0.0, |total, size| {
+            if size > 0 {
+                let probability = size as f64 / num_sols as f64;
+                total - probability * probability.log2()
+            } else {
+                total
+            }
+        })
+    }
+
     pub fn find_best_guess(
         &self,
         hard_mode: bool,
@@ -140,19 +157,7 @@ impl Solver {
         let mut best_guess = ['a'; WORD_LENGTH]; // dummy value
         let mut best_in_sols = false;
         for guess_chars in guess_list {
-            let mut buckets = [0usize; 243];
-            for answer in &self.filtered_sols {
-                let feedback = WordClue::calc_val_from_guess_n_solution(*guess_chars, answer);
-                buckets[feedback] += 1;
-            }
-            let entropy = buckets.into_iter().fold(0.0, |total, size| {
-                if size > 0 {
-                    let probability = size as f64 / num_sols as f64;
-                    total - probability * probability.log2()
-                } else {
-                    total
-                }
-            });
+            let entropy = self.calc_guess_entropy(*guess_chars);
 
             if entropy > best_entropy {
                 best_entropy = entropy;

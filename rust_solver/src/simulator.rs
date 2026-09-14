@@ -77,7 +77,7 @@ impl GameSim {
                     self.solver
                         .filtered_sols
                         .iter()
-                        .map(|s| to_string(s))
+                        .map(to_string)
                         .collect::<Vec<_>>()
                         .join(", ")
                 );

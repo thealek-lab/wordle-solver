@@ -80,7 +80,7 @@ fn run() -> Result<(), String> {
 
     let mut solver = Solver::new(&solutions_file, &guesses_file, verbosity)?;
     if hint_best.is_some() && filters.is_empty() {
-        //TODO TBD
+        filters.push("xxxxx".to_string());
     }
     if filters.is_empty() {
         return Ok(());
@@ -94,18 +94,27 @@ fn run() -> Result<(), String> {
             solver
                 .filtered_sols
                 .iter()
-                .map(|s| to_string(s))
+                .map(to_string)
                 .collect::<Vec<_>>()
                 .join(", ")
         );
     }
 
-    let best_list = solver.find_best_guess(hard_mode, reverse)?;
-    print!("Best guesses: ");
-    for (guess_chars, entropy) in best_list.into_iter().take(10) {
-        print!("{}({:.2}), ", to_string(&guess_chars), entropy);
+    if let Some(hint) = hint_best {
+        let guess_chars = filter::WordClue::make_word_chars(&hint);
+        if !solver.all_guesses.contains(&guess_chars) {
+            return Err(format!("Hint guess {hint} is not in the guesses list"));
+        }
+        let entropy = solver.calc_guess_entropy(guess_chars);
+        println!("Hinted guess: {hint} ({entropy:.4})");
+    } else {
+        let best_list = solver.find_best_guess(hard_mode, reverse)?;
+        print!("Best guesses: ");
+        for (guess_chars, entropy) in best_list.into_iter().take(10) {
+            print!("{}({:.4}), ", to_string(&guess_chars), entropy);
+        }
+        println!();
     }
-    println!();
 
     Ok(())
 }
