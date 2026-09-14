@@ -68,11 +68,19 @@ impl GameSim {
             );
         }
 
+        if self.solver.len() == 1 {
+            let solution = self.solver.filtered_sols[0];
+            if initial_guess != solution {
+                guesses.push((GuessScore::new(solution, 100.0, true), 0));
+            }
+        }
+
         while self.solver.len() > 1 {
             let ranked_guesses = self.solver.find_best_guess(false, reverse, 1)?;
             let score = &ranked_guesses[0];
             self.solver
                 .filter_by_guess_n_solution(score.word_chars, sol_chars)?;
+
             guesses.push((score.clone(), self.solver.len()));
             if self.verbosity >= 1 {
                 println!(
@@ -94,10 +102,10 @@ impl GameSim {
                 );
             }
             if self.solver.len() == 1 {
-                let solution = self.solver.filtered_sols[0];
-                if guesses.last().unwrap().0.word_chars != solution {
-                    guesses.push((GuessScore::new(solution, 100.0, true), 0));
+                if guesses.last().unwrap().0.word_chars != score.word_chars {
+                    guesses.push((GuessScore::new(score.word_chars, 100.0, true), 0));
                 }
+
                 break;
             }
             if guesses.len() >= 7 {
@@ -149,11 +157,10 @@ impl GameSim {
         }
         .map_err(|error| format!("Could not open {file_name}: {error}"))?;
 
-        let (last_sol, mut total_steps) = res.unwrap();
+        let (last_sol, mut total_steps, mut completed_count) = res.unwrap();
 
         let total = self.solver.all_solutions.len();
         let start_time = Instant::now();
-        let mut completed_count = 0;
         for solution in &self.solver.all_solutions.clone() {
             if *solution <= last_sol {
                 continue;
@@ -195,10 +202,11 @@ impl GameSim {
 fn read_completed_results(
     file_name: &str,
     all_solutions: &[WordChars],
-) -> Result<(WordChars, usize), String> {
+) -> Result<(WordChars, usize, usize), String> {
     let contents = std::fs::read_to_string(file_name)
         .map_err(|error| format!("Could not read resume file {file_name}: {error}"))?;
     let mut total_steps = 0;
+    let mut completed_count = 0;
     let mut last_line = vec![];
 
     for (line_number, line) in contents.lines().enumerate() {
@@ -210,19 +218,23 @@ fn read_completed_results(
                     line_number + 1
                 )
             })?;
+            completed_count += 1;
             last_line = fields
         }
     }
 
-    if last_line.is_empty() {
-        return Err(format!("Cannot find any items in '{file_name}'"));
-    }
+    let solution = if last_line.is_empty() {
+        all_solutions[0]
+    } else {
+        let last_line_str = last_line[0];
+        let solution = WordClue::make_word_chars(last_line_str);
 
-    let last_line_str = last_line[0];
-    let solution = WordClue::make_word_chars(last_line_str);
-    if !all_solutions.binary_search(&solution).is_ok() {
-        return Err(format!("Unknown solution '{last_line_str}' in {file_name}"));
-    }
+        if !all_solutions.binary_search(&solution).is_ok() {
+            return Err(format!("Unknown solution '{last_line_str}' in {file_name}"));
+        }
 
-    Ok((solution, total_steps))
+        solution
+    };
+
+    Ok((solution, total_steps, completed_count))
 }
