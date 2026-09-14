@@ -5,8 +5,6 @@ mod solver;
 use simulator::{BEST_INITIAL_GUESS, GameSim};
 use solver::{DEFAULT_GUESSES_FILE, DEFAULT_SOLUTIONS_FILE, Solver, resolve_default_path};
 
-use crate::filter::to_string;
-
 fn main() {
     if let Err(error) = run() {
         eprintln!("Error: {error}");
@@ -94,7 +92,7 @@ fn run() -> Result<(), String> {
             solver
                 .filtered_sols
                 .iter()
-                .map(to_string)
+                .map(|a| a.iter().collect::<String>())
                 .collect::<Vec<_>>()
                 .join(", ")
         );

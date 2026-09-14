@@ -3,7 +3,7 @@ use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::time::Instant;
 
-use crate::filter::{WordChars, WordClue, to_string};
+use crate::filter::{WordChars, WordClue};
 use crate::solver::{DEFAULT_SOLUTIONS_FILE, GuessScore, Solver, resolve_default_path};
 
 pub const BEST_INITIAL_GUESS: &str = "SLATE";
@@ -21,21 +21,22 @@ impl GameSim {
         }
 
         let solution = WordClue::make_word_chars(solution);
+        let solution = GuessScore::new(solution, 0.0, false);
 
         let solver = Solver::new(
             &resolve_default_path(DEFAULT_SOLUTIONS_FILE),
             guesses_file,
             verbosity,
         )?;
-        if !solver.all_solutions.contains(&solution) {
+        if !solver.all_solutions.contains(&solution.word_chars) {
             return Err(format!(
                 "Invalid solution {} is not in the official list!",
-                to_string(&solution)
+                solution.guess_str()
             ));
         }
 
         Ok(Self {
-            solution: GuessScore::new(solution, 0.0, false),
+            solution,
             verbosity,
             solver,
         })
@@ -70,7 +71,7 @@ impl GameSim {
                 println!(
                     "After guess {} {} Solutions: {}",
                     guesses.len(),
-                    to_string(&score.word_chars),
+                    score.guess_str(),
                     self.solver.len()
                 );
             }
@@ -80,7 +81,7 @@ impl GameSim {
                     self.solver
                         .filtered_sols
                         .iter()
-                        .map(to_string)
+                        .map(|a| a.iter().collect::<String>())
                         .collect::<Vec<_>>()
                         .join(", ")
                 );
@@ -165,7 +166,8 @@ impl GameSim {
             total_steps += result.len();
             let mut line = format!("{sol_str}, {}", result.len());
             for (guess, count) in result {
-                line.push_str(&format!(", {}({count})", guess.guess_str()));
+                let count_str = if count == 0 { "*" } else { &count.to_string() };
+                line.push_str(&format!(", {}({count_str})", guess.guess_str()));
             }
             writeln!(output, "{line}")
                 .map_err(|error| format!("Could not write {file_name}: {error}"))?;
@@ -202,17 +204,15 @@ fn read_completed_results(
                 line_number + 1
             ));
         }
-        let solution = WordClue::make_word_chars(fields[0]);
+
+        let solution_str = fields[0];
+        let solution = WordClue::make_word_chars(solution_str);
         if !solution_set.contains(&solution) {
-            return Err(format!(
-                "Unknown solution '{}' in {file_name}",
-                to_string(&solution)
-            ));
+            return Err(format!("Unknown solution '{solution_str}' in {file_name}"));
         }
         if !completed.insert(solution) {
             return Err(format!(
-                "Duplicate solution '{}' in {file_name}",
-                to_string(&solution)
+                "Duplicate solution '{solution_str}' in {file_name}"
             ));
         }
         total_steps += fields[1].parse::<usize>().map_err(|error| {
