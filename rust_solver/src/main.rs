@@ -108,11 +108,11 @@ fn run() -> Result<(), String> {
         let entropy = solver.calc_guess_entropy(guess_chars);
         println!("Hinted guess: {hint} ({entropy:.4})");
     } else {
-        let best_list = solver.find_best_guess(hard_mode, reverse)?;
+        let best_list = solver.find_best_guess(hard_mode, reverse, 10)?;
         print!("Best guesses: ");
         let mut score_str_list = vec![];
         for (guess_chars, entropy, in_sols) in best_list.into_iter().take(10) {
-            let mut score_str = format!("{}", to_string(&guess_chars));
+            let mut score_str = to_string(&guess_chars);
             if in_sols {
                 score_str += "+";
             }

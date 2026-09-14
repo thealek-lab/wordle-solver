@@ -142,6 +142,7 @@ impl Solver {
         &self,
         hard_mode: bool,
         reverse: bool,
+        max_num: usize,
     ) -> Result<Vec<(WordChars, f64, bool)>, String> {
         let num_sols = self.filtered_sols.len();
         if num_sols == 0 {
@@ -179,14 +180,14 @@ impl Solver {
                 ));
 
                 best_list.sort_by(|a, b| b.1.total_cmp(&a.1).then_with(|| b.2.cmp(&a.2)));
-                best_list.truncate(10);
+                best_list.truncate(max_num);
             } else if entropy == worst_item.1
                 && !worst_item.2
                 && self.filtered_sols.binary_search(guess_chars).is_ok()
             {
                 best_list.push((*guess_chars, entropy, true));
                 best_list.sort_by(|a, b| b.1.total_cmp(&a.1).then_with(|| b.2.cmp(&a.2)));
-                best_list.truncate(10);
+                best_list.truncate(max_num);
             }
         }
 
