@@ -28,6 +28,16 @@ impl GuessScore {
             in_sols,
         }
     }
+
+    pub fn guess_str(&self) -> String {
+        let mut out = self.word_chars.iter().collect();
+
+        if self.in_sols {
+            out += "+";
+        }
+
+        out
+    }
 }
 
 pub struct Solver {

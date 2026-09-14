@@ -112,11 +112,7 @@ fn run() -> Result<(), String> {
         print!("Best guesses: ");
         let mut score_str_list = vec![];
         for score in best_list.into_iter().take(10) {
-            let mut score_str = to_string(&score.word_chars);
-            if score.in_sols {
-                score_str += "+";
-            }
-            score_str += &format!("({:.4})", score.entropy);
+            let score_str = format!("{}({:.4})", score.guess_str(), score.entropy);
             score_str_list.push(score_str);
         }
         println!("{}", score_str_list.join(", "));
