@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
 
@@ -33,7 +32,6 @@ impl Solver {
         }
 
         let mut all_solutions = read_words(solution_file_name, true)?;
-        ensure_unique(&all_solutions, "solution", solution_file_name)?;
         all_solutions.sort();
         all_solutions.dedup();
 
@@ -42,7 +40,6 @@ impl Solver {
         } else {
             read_words(guesses_file_name, false)?
         };
-        ensure_unique(&all_guesses, "guess", guesses_file_name)?;
         all_guesses.extend(all_solutions.iter().cloned());
         all_guesses.sort();
         all_guesses.dedup();
@@ -222,11 +219,4 @@ fn read_words(file_name: &str, solution_file: bool) -> Result<Vec<String>, Strin
         }
     }
     Ok(words)
-}
-
-fn ensure_unique(words: &[String], kind: &str, file_name: &str) -> Result<(), String> {
-    if words.iter().collect::<HashSet<_>>().len() != words.len() {
-        return Err(format!("Duplicate {kind} in {file_name}"));
-    }
-    Ok(())
 }
