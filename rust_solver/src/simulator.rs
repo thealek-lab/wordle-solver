@@ -42,7 +42,11 @@ impl GameSim {
         })
     }
 
-    pub fn run(&mut self, initial_guess_str: &str) -> Result<Vec<(GuessScore, usize)>, String> {
+    pub fn run(
+        &mut self,
+        initial_guess_str: &str,
+        reverse: bool,
+    ) -> Result<Vec<(GuessScore, usize)>, String> {
         let start_time = Instant::now();
 
         let sol_chars = self.solution.word_chars;
@@ -66,7 +70,7 @@ impl GameSim {
         }
 
         while self.solver.len() > 1 {
-            let ranked_guesses = self.solver.find_best_guess(false, false, 1)?;
+            let ranked_guesses = self.solver.find_best_guess(false, reverse, 1)?;
             let score = &ranked_guesses[0];
             self.solver
                 .filter_by_guess_n_solution(score.word_chars, sol_chars)?;
@@ -164,7 +168,7 @@ impl GameSim {
             }
             self.solution = solution;
 
-            let result = self.run(initial_guess_str)?;
+            let result = self.run(initial_guess_str, false)?;
             total_steps += result.len();
             let mut line = format!("{sol_str}, {}", result.len());
             for (guess, count) in result {

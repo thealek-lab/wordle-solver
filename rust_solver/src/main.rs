@@ -70,7 +70,10 @@ fn run() -> Result<(), String> {
     if let Some(solution) = simulate_game {
         let mut sim = GameSim::new(&solution, &guesses_file, verbosity)?;
         return sim
-            .run(force_guess.as_deref().unwrap_or(BEST_INITIAL_GUESS))
+            .run(
+                force_guess.as_deref().unwrap_or(BEST_INITIAL_GUESS),
+                reverse,
+            )
             .map(|_| ());
     }
 
