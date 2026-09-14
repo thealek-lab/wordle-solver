@@ -5,8 +5,6 @@ mod solver;
 use simulator::{BEST_INITIAL_GUESS, GameSim};
 use solver::{DEFAULT_GUESSES_FILE, DEFAULT_SOLUTIONS_FILE, Solver, resolve_default_path};
 
-use crate::filter::to_string;
-
 fn main() {
     if let Err(error) = run() {
         eprintln!("Error: {error}");
@@ -94,7 +92,7 @@ fn run() -> Result<(), String> {
             solver
                 .filtered_sols
                 .iter()
-                .map(to_string)
+                .map(|w| w.iter().collect::<String>())
                 .collect::<Vec<_>>()
                 .join(", ")
         );
@@ -108,10 +106,10 @@ fn run() -> Result<(), String> {
         let entropy = solver.calc_guess_entropy(guess_chars);
         println!("Hinted guess: {hint} ({entropy:.4})");
     } else {
-        let best_list = solver.find_best_guess(hard_mode, reverse, 10)?;
+        let best_list = solver.find_best_guesses(hard_mode, reverse, 10)?;
         print!("Best guesses: ");
-        for (guess_chars, entropy) in best_list {
-            print!("{}({:.4}), ", to_string(&guess_chars), entropy);
+        for guess_score in best_list {
+            print!("{}({:.4}), ", guess_score.guess_str(), guess_score.entropy);
         }
         println!();
     }

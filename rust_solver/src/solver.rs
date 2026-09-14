@@ -1,4 +1,4 @@
-use std::collections::{BTreeSet, HashSet};
+use std::collections::{BTreeSet, BinaryHeap, HashSet};
 use std::fs;
 use std::path::Path;
 
@@ -12,6 +12,68 @@ pub fn resolve_default_path(file_name: &str) -> String {
         file_name.to_owned()
     } else {
         format!("../{}", file_name.trim_start_matches("./"))
+    }
+}
+
+pub struct GuessScore {
+    pub entropy: f64,
+    pub is_solution: bool,
+    pub guess_chars: WordChars,
+}
+
+impl GuessScore {
+    pub fn new(entropy: f64, is_solution: bool, guess_chars: WordChars) -> Self {
+        Self {
+            entropy,
+            is_solution,
+            guess_chars,
+        }
+    }
+
+    pub fn guess_str(&self) -> String {
+        let mut guess_str = self.guess_chars.iter().collect();
+        if self.is_solution {
+            guess_str += "+";
+        }
+
+        guess_str
+    }
+}
+
+impl PartialEq for GuessScore {
+    fn eq(&self, other: &Self) -> bool {
+        self.entropy == other.entropy
+            && self.is_solution == other.is_solution
+            && self.guess_chars == other.guess_chars
+    }
+}
+
+impl Eq for GuessScore {}
+
+impl PartialOrd for GuessScore {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for GuessScore {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        assert!(self.entropy.is_finite() && other.entropy.is_finite());
+        assert!(self.entropy >= 0.0 && other.entropy >= 0.0);
+
+        // Sort by entropy first
+        let entropy_cmp = self.entropy.total_cmp(&other.entropy);
+        if entropy_cmp != std::cmp::Ordering::Equal {
+            return entropy_cmp;
+        }
+
+        let is_sol_cmp = self.is_solution.cmp(&other.is_solution);
+        if is_sol_cmp != std::cmp::Ordering::Equal {
+            return is_sol_cmp;
+        }
+
+        // Sort alphabetically if all else fails
+        other.guess_chars.cmp(&self.guess_chars)
     }
 }
 
@@ -122,12 +184,12 @@ impl Solver {
         })
     }
 
-    pub fn find_best_guess(
+    pub fn find_best_guesses(
         &self,
         hard_mode: bool,
         reverse: bool,
         max_results: usize,
-    ) -> Result<Vec<(WordChars, f64)>, String> {
+    ) -> Result<Vec<GuessScore>, String> {
         let num_sols = self.filtered_sols.len();
         if num_sols == 0 {
             return Err("No solutions left to guess from".to_owned());
@@ -138,7 +200,13 @@ impl Solver {
         }
 
         if num_sols == 1 {
-            return Ok(vec![(self.filtered_sols.iter().next().unwrap().clone(), 100.0)]);
+            return Ok(vec![
+                (GuessScore {
+                    entropy: 100.0,
+                    is_solution: true,
+                    guess_chars: self.filtered_sols.iter().next().unwrap().clone(),
+                }),
+            ]);
         }
 
         let mut guess_list = if hard_mode {
@@ -149,34 +217,26 @@ impl Solver {
 
         let mut reverse_list: Vec<WordChars> = vec![];
         if reverse {
-            // reverse_list.extend(guess_list.iter().rev());
+            // TBF TODO reverse_list.extend(guess_list.iter().rev());
             // guess_list = &reverse_list;
         }
 
-        let mut ranked_guesses = guess_list
-            .iter()
-            .enumerate()
-            .map(|(index, guess_chars)| {
-                (
-                    *guess_chars,
-                    self.calc_guess_entropy(*guess_chars),
-                    self.filtered_sols.contains(guess_chars),
-                    index,
-                )
-            })
-            .collect::<Vec<_>>();
+        let mut ranked_guesses = BinaryHeap::new();
+        for guess in guess_list {
+            ranked_guesses.push(GuessScore {
+                entropy: self.calc_guess_entropy(*guess),
+                is_solution: self.filtered_sols.contains(guess),
+                guess_chars: *guess,
+            });
+        }
 
-        ranked_guesses.sort_by(|left, right| {
-            right.1.total_cmp(&left.1)
-                .then_with(|| right.2.cmp(&left.2))
-                .then_with(|| left.3.cmp(&right.3))
-        });
+        let mut top_guesses: Vec<GuessScore> =
+            ranked_guesses.into_iter().take(max_results).collect();
 
-        Ok(ranked_guesses
-            .into_iter()
-            .take(max_results)
-            .map(|(guess, entropy, _, _)| (guess, entropy))
-            .collect())
+        top_guesses.sort();
+        top_guesses.reverse();
+
+        Ok(top_guesses)
     }
 }
 
