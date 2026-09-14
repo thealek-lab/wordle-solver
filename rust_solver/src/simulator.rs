@@ -68,13 +68,6 @@ impl GameSim {
             );
         }
 
-        if self.solver.len() == 1 {
-            let solution = self.solver.filtered_sols[0];
-            if initial_guess != solution {
-                guesses.push((GuessScore::new(solution, 100.0, true), 0));
-            }
-        }
-
         while self.solver.len() > 1 {
             let ranked_guesses = self.solver.find_best_guess(false, reverse, 1)?;
             let score = &ranked_guesses[0];
@@ -115,9 +108,12 @@ impl GameSim {
 
         let elapsed = start_time.elapsed().as_secs_f64();
         let last_guess = guesses.last();
-        if let Some((best_guess, _)) = last_guess
-            && best_guess.word_chars == sol_chars
-        {
+        if let Some((best_guess, _)) = last_guess {
+            let solution = self.solver.filtered_sols[0];
+            if best_guess.word_chars != solution {
+                guesses.push((GuessScore::new(solution, 100.0, true), 0));
+            }
+
             println!(
                 "Found solution {solution_str} in {} steps after {elapsed:.2}s!",
                 guesses.len()
@@ -146,7 +142,6 @@ impl GameSim {
         let file_name = format!("wordle_initial_guess_{initial_guess_str}_results.txt");
 
         let res = read_completed_results(&file_name, &self.solver.all_solutions);
-
         let mut output = if res.is_ok() {
             OpenOptions::new()
                 .create(true)
@@ -203,11 +198,16 @@ fn read_completed_results(
     file_name: &str,
     all_solutions: &[WordChars],
 ) -> Result<(WordChars, usize, usize), String> {
-    let contents = std::fs::read_to_string(file_name)
-        .map_err(|error| format!("Could not read resume file {file_name}: {error}"))?;
+    let res = std::fs::read_to_string(file_name);
+    if let Err(e) = res {
+        eprintln!("WARNING: Could not read resume file {file_name}: {e}");
+        return Ok((WordClue::make_word_chars("AAAAA"), 0, 0));
+    }
+
     let mut total_steps = 0;
     let mut completed_count = 0;
     let mut last_line = vec![];
+    let contents = res.unwrap();
 
     for (line_number, line) in contents.lines().enumerate() {
         let fields: Vec<_> = line.split(',').map(str::trim).collect();
