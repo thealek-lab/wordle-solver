@@ -161,9 +161,9 @@ impl Solver {
             &self.all_guesses
         };
 
-        let mut reverse_list: Vec<WordChars> = vec![];
+        let mut reverse_list = vec![];
         if reverse {
-            reverse_list.extend(guess_list.iter().rev());
+            reverse_list = guess_list.iter().rev().copied().collect();
             guess_list = &reverse_list;
         }
 
