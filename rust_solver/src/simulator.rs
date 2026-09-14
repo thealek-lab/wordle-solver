@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::time::Instant;
@@ -127,7 +126,6 @@ impl GameSim {
     pub fn calculate_initial_guess_performance_from(
         &mut self,
         initial_guess_str: &str,
-        resume_file: Option<&str>,
     ) -> Result<(), String> {
         let initial_guess = WordClue::make_word_chars(initial_guess_str);
 
@@ -136,14 +134,12 @@ impl GameSim {
                 "Initial guess '{initial_guess_str}' is not in guess list!"
             ));
         }
-        let file_name = resume_file
-            .map(str::to_owned)
-            .unwrap_or_else(|| format!("wordle_initial_guess_{initial_guess_str}_results.txt"));
-        let (completed, mut total_steps) = match resume_file {
-            Some(path) => read_completed_results(path, &self.solver.all_solutions)?,
-            None => (HashSet::new(), 0),
-        };
-        let mut output = if resume_file.is_some() {
+
+        let file_name = format!("wordle_initial_guess_{initial_guess_str}_results.txt");
+
+        let res = read_completed_results(&file_name, &self.solver.all_solutions);
+
+        let mut output = if res.is_ok() {
             OpenOptions::new()
                 .create(true)
                 .append(true)
@@ -152,11 +148,14 @@ impl GameSim {
             File::create(&file_name)
         }
         .map_err(|error| format!("Could not open {file_name}: {error}"))?;
+
+        let (last_sol, mut total_steps) = res.unwrap();
+
         let total = self.solver.all_solutions.len();
         let start_time = Instant::now();
-        let mut completed_count = completed.len();
+        let mut completed_count = 0;
         for solution in &self.solver.all_solutions.clone() {
-            if completed.contains(solution) {
+            if *solution <= last_sol {
                 continue;
             }
 
@@ -196,37 +195,34 @@ impl GameSim {
 fn read_completed_results(
     file_name: &str,
     all_solutions: &[WordChars],
-) -> Result<(HashSet<WordChars>, usize), String> {
+) -> Result<(WordChars, usize), String> {
     let contents = std::fs::read_to_string(file_name)
         .map_err(|error| format!("Could not read resume file {file_name}: {error}"))?;
-    let solution_set: HashSet<_> = all_solutions.iter().collect();
-    let mut completed = HashSet::new();
     let mut total_steps = 0;
+    let mut last_line = vec![];
+
     for (line_number, line) in contents.lines().enumerate() {
         let fields: Vec<_> = line.split(',').map(str::trim).collect();
-        if fields.len() < 2 {
-            return Err(format!(
-                "Invalid resume row {} in {file_name}",
-                line_number + 1
-            ));
+        if fields.len() > 2 {
+            total_steps += fields[1].parse::<usize>().map_err(|error| {
+                format!(
+                    "Invalid step count in resume row {}: {error}",
+                    line_number + 1
+                )
+            })?;
+            last_line = fields
         }
-
-        let solution_str = fields[0];
-        let solution = WordClue::make_word_chars(solution_str);
-        if !solution_set.contains(&solution) {
-            return Err(format!("Unknown solution '{solution_str}' in {file_name}"));
-        }
-        if !completed.insert(solution) {
-            return Err(format!(
-                "Duplicate solution '{solution_str}' in {file_name}"
-            ));
-        }
-        total_steps += fields[1].parse::<usize>().map_err(|error| {
-            format!(
-                "Invalid step count in resume row {}: {error}",
-                line_number + 1
-            )
-        })?;
     }
-    Ok((completed, total_steps))
+
+    if last_line.is_empty() {
+        return Err(format!("Cannot find any items in '{file_name}'"));
+    }
+
+    let last_line_str = last_line[0];
+    let solution = WordClue::make_word_chars(last_line_str);
+    if !all_solutions.binary_search(&solution).is_ok() {
+        return Err(format!("Unknown solution '{last_line_str}' in {file_name}"));
+    }
+
+    Ok((solution, total_steps))
 }
