@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{BTreeSet, HashSet};
 use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::time::Instant;
@@ -83,9 +83,9 @@ impl GameSim {
                 );
             }
             if self.solver.len() == 1 {
-                let solution = self.solver.filtered_sols[0];
-                if guesses.last().unwrap().0 != solution {
-                    guesses.push((solution, "*".to_owned()));
+                let solution = self.solver.filtered_sols.iter().next().unwrap();
+                if guesses.last().unwrap().0 != *solution {
+                    guesses.push((*solution, "*".to_owned()));
                 }
                 break;
             }
@@ -130,7 +130,7 @@ impl GameSim {
             .map(str::to_owned)
             .unwrap_or_else(|| format!("wordle_initial_guess_{initial_guess_str}_results.txt"));
         let (completed, mut total_steps) = match resume_file {
-            Some(path) => read_completed_results(path, &self.solver.all_solutions)?,
+            Some(path) =>  read_completed_results(path, &self.solver.all_solutions)?,
             None => (HashSet::new(), 0),
         };
         let mut output = if resume_file.is_some() {
@@ -180,7 +180,7 @@ impl GameSim {
 
 fn read_completed_results(
     file_name: &str,
-    all_solutions: &[WordChars],
+    all_solutions: &BTreeSet<WordChars>,
 ) -> Result<(HashSet<WordChars>, usize), String> {
     let contents = std::fs::read_to_string(file_name)
         .map_err(|error| format!("Could not read resume file {file_name}: {error}"))?;

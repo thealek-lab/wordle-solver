@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{BTreeSet, HashSet};
 use std::fs;
 use std::path::Path;
 
@@ -17,9 +17,9 @@ pub fn resolve_default_path(file_name: &str) -> String {
 
 pub struct Solver {
     pub verbosity: u32,
-    pub all_solutions: Vec<WordChars>,
-    pub filtered_sols: Vec<WordChars>,
-    pub all_guesses: Vec<WordChars>,
+    pub all_solutions: BTreeSet<WordChars>,
+    pub filtered_sols: BTreeSet<WordChars>,
+    pub all_guesses: BTreeSet<WordChars>,
 }
 
 impl Solver {
@@ -57,16 +57,16 @@ impl Solver {
         let all_solutions = all_solutions
             .iter()
             .map(|solution| WordClue::make_word_chars(solution))
-            .collect::<Vec<_>>();
+            .collect::<BTreeSet<_>>();
 
         let all_guesses = all_guesses
             .iter()
             .map(|guess| WordClue::make_word_chars(guess))
-            .collect::<Vec<_>>();
+            .collect::<BTreeSet<_>>();
 
         Ok(Self {
             verbosity,
-            filtered_sols: all_solutions.clone(),
+            filtered_sols: all_solutions.clone().into_iter().collect(),
             all_solutions,
             all_guesses,
         })
@@ -89,7 +89,6 @@ impl Solver {
             self.filtered_sols
                 .retain(|maybe_sol: &WordChars| word_clue.is_match(guess_chars, *maybe_sol));
         }
-        self.filtered_sols.sort();
         Ok(())
     }
 
@@ -139,7 +138,7 @@ impl Solver {
         }
 
         if num_sols == 1 {
-            return Ok(vec![(self.filtered_sols[0], 0.0)]);
+            return Ok(vec![(self.filtered_sols.iter().next().unwrap().clone(), 100.0)]);
         }
 
         let mut guess_list = if hard_mode {
@@ -150,8 +149,8 @@ impl Solver {
 
         let mut reverse_list: Vec<WordChars> = vec![];
         if reverse {
-            reverse_list.extend(guess_list.iter().rev());
-            guess_list = &reverse_list;
+            // reverse_list.extend(guess_list.iter().rev());
+            // guess_list = &reverse_list;
         }
 
         let mut ranked_guesses = guess_list
@@ -161,7 +160,7 @@ impl Solver {
                 (
                     *guess_chars,
                     self.calc_guess_entropy(*guess_chars),
-                    self.filtered_sols.binary_search(guess_chars).is_ok(),
+                    self.filtered_sols.contains(guess_chars),
                     index,
                 )
             })
