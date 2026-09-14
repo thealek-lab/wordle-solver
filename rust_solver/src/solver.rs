@@ -117,28 +117,39 @@ impl Solver {
             let feedback = WordClue::calc_val_from_guess_n_solution(guess_chars, answer);
             buckets[feedback] += 1;
         }
-        buckets.into_iter().fold(0.0, |total, size| {
+        let entropy = buckets.into_iter().fold(0.0, |total, size| {
             if size > 0 {
                 let probability = size as f64 / num_sols as f64;
                 total - probability * probability.log2()
             } else {
                 total
             }
-        })
+        });
+
+        assert!(
+            entropy >= 0.0,
+            "Entropy should be non-negative, but got {entropy}"
+        );
+        assert!(
+            entropy.is_finite(),
+            "Entropy should be finite, but got {entropy}"
+        );
+
+        entropy
     }
 
     pub fn find_best_guess(
         &self,
         hard_mode: bool,
         reverse: bool,
-    ) -> Result<Vec<(WordChars, f64)>, String> {
+    ) -> Result<Vec<(WordChars, f64, bool)>, String> {
         let num_sols = self.filtered_sols.len();
         if num_sols == 0 {
             return Err("No solutions left to guess from".to_owned());
         }
 
         if num_sols == 1 {
-            return Ok(vec![(self.filtered_sols[0], 0.0)]);
+            return Ok(vec![(self.filtered_sols[0], 100.0, true)]);
         }
 
         let mut guess_list = if hard_mode {
@@ -153,27 +164,33 @@ impl Solver {
             guess_list = &reverse_list;
         }
 
-        let mut best_entropy = 0.0;
-        let mut best_guess = ['_'; WORD_LENGTH]; // dummy value
-        let mut best_in_sols = false;
+        let mut best_list = vec![(['_'; WORD_LENGTH], 0.0, false)];
         for guess_chars in guess_list {
             let entropy = self.calc_guess_entropy(*guess_chars);
 
-            if entropy > best_entropy {
-                best_entropy = entropy;
-                best_guess = *guess_chars;
-                best_in_sols = self.filtered_sols.binary_search(&best_guess).is_ok();
-            } else if entropy == best_entropy
-                && !best_in_sols
+            let list_len = best_list.len();
+            let worst_item = best_list[list_len - 1];
+
+            if entropy > worst_item.1 {
+                best_list.push((
+                    *guess_chars,
+                    entropy,
+                    self.filtered_sols.binary_search(guess_chars).is_ok(),
+                ));
+
+                best_list.sort_by(|a, b| b.1.total_cmp(&a.1).then_with(|| b.2.cmp(&a.2)));
+                best_list.truncate(10);
+            } else if entropy == worst_item.1
+                && !worst_item.2
                 && self.filtered_sols.binary_search(guess_chars).is_ok()
             {
-                best_entropy = entropy;
-                best_guess = *guess_chars;
-                best_in_sols = true;
+                best_list.push((*guess_chars, entropy, true));
+                best_list.sort_by(|a, b| b.1.total_cmp(&a.1).then_with(|| b.2.cmp(&a.2)));
+                best_list.truncate(10);
             }
         }
 
-        Ok(vec![(best_guess, best_entropy)])
+        Ok(best_list)
     }
 }
 
