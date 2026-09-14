@@ -108,10 +108,11 @@ fn run() -> Result<(), String> {
     } else {
         let best_list = solver.find_best_guesses(hard_mode, reverse, 10)?;
         print!("Best guesses: ");
-        for guess_score in best_list {
-            print!("{}({:.4}), ", guess_score.guess_str(), guess_score.entropy);
-        }
-        println!();
+        let str_list: Vec<String> = best_list
+            .into_iter()
+            .map(|guess_score| format!("{}({:.4})", guess_score.guess_str(), guess_score.entropy))
+            .collect();
+        println!("{}", str_list.join(", "));
     }
 
     Ok(())

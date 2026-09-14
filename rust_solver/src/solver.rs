@@ -1,8 +1,8 @@
-use std::collections::{BTreeSet, BinaryHeap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, BinaryHeap, HashSet};
 use std::fs;
 use std::path::Path;
 
-use crate::filter::{WordChars, WordClue};
+use crate::filter::{WORD_LENGTH, WordChars, WordClue};
 
 pub const DEFAULT_SOLUTIONS_FILE: &str = "./solutions.txt";
 pub const DEFAULT_GUESSES_FILE: &str = "./all_guesses_2022_11K.txt";
@@ -15,6 +15,7 @@ pub fn resolve_default_path(file_name: &str) -> String {
     }
 }
 
+#[derive(Clone)]
 pub struct GuessScore {
     pub entropy: f64,
     pub is_solution: bool,
@@ -204,7 +205,7 @@ impl Solver {
                 (GuessScore {
                     entropy: 100.0,
                     is_solution: true,
-                    guess_chars: self.filtered_sols.iter().next().unwrap().clone(),
+                    guess_chars: *self.filtered_sols.iter().next().unwrap(),
                 }),
             ]);
         }
@@ -221,22 +222,41 @@ impl Solver {
             // guess_list = &reverse_list;
         }
 
-        let mut ranked_guesses = BinaryHeap::new();
+        let mut min_score = GuessScore::new(0.0, false, ['Z'; WORD_LENGTH]);
+        let mut max_score = GuessScore::new(0.0, false, ['Z'; WORD_LENGTH]);
+        let mut ranked_guesses = vec![];
         for guess in guess_list {
-            ranked_guesses.push(GuessScore {
-                entropy: self.calc_guess_entropy(*guess),
-                is_solution: self.filtered_sols.contains(guess),
-                guess_chars: *guess,
-            });
+            let this_score = GuessScore::new(
+                self.calc_guess_entropy(*guess),
+                self.filtered_sols.contains(guess),
+                *guess,
+            );
+
+            if max_results == 1 {
+                if this_score > max_score {
+                    max_score = this_score;
+                }
+            } else {
+                if this_score > min_score {
+                    assert!(ranked_guesses.len() <= max_results);
+                    ranked_guesses.push(this_score);
+
+                    // Reverse sort the ranked_guesses so that the lowest score is at the end of the list
+                    ranked_guesses.sort_by(|a, b| b.cmp(a));
+
+                    if ranked_guesses.len() > max_results {
+                        min_score = ranked_guesses.pop().unwrap_or(min_score);
+                    }
+                }
+            }
         }
 
-        let mut top_guesses: Vec<GuessScore> =
-            ranked_guesses.into_iter().take(max_results).collect();
+        if max_results == 1 {
+            assert!(ranked_guesses.is_empty());
+            ranked_guesses.push(max_score);
+        }
 
-        top_guesses.sort();
-        top_guesses.reverse();
-
-        Ok(top_guesses)
+        Ok(ranked_guesses)
     }
 }
 
