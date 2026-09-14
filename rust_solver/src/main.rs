@@ -17,7 +17,6 @@ fn run() -> Result<(), String> {
     let mut solutions_file = resolve_default_path(DEFAULT_SOLUTIONS_FILE);
     let mut guesses_file = resolve_default_path(DEFAULT_GUESSES_FILE);
     let mut simulate_game = None;
-    let mut hint_best = None;
     let mut force_guess = None;
     let mut calc_init = None;
     let mut resume_file = None;
@@ -41,7 +40,6 @@ fn run() -> Result<(), String> {
             "-s" | "--solution-file" => solutions_file = value(argument)?.to_owned(),
             "-g" | "--guesses-file" => guesses_file = value(argument)?.to_owned(),
             "-m" | "--simulate-game" => simulate_game = Some(value(argument)?),
-            "-b" | "--hint-best" => hint_best = Some(value(argument)?.to_uppercase()),
             "-f" | "--force-guess" => force_guess = Some(value(argument)?.to_uppercase()),
             "-c" | "--calc-init-guess" => calc_init = Some(value(argument)?.to_uppercase()),
             "--resume" => resume_file = Some(value(argument)?),
@@ -77,7 +75,7 @@ fn run() -> Result<(), String> {
     }
 
     let mut solver = Solver::new(&solutions_file, &guesses_file, verbosity)?;
-    if hint_best.is_some() && filters.is_empty() {
+    if force_guess.is_some() && filters.is_empty() {
         filters.push("xxxxx".to_string());
     }
     if filters.is_empty() {
@@ -98,13 +96,15 @@ fn run() -> Result<(), String> {
         );
     }
 
-    if let Some(hint) = hint_best {
-        let guess_chars = filter::WordClue::make_word_chars(&hint);
+    if let Some(force_guess) = force_guess {
+        let guess_chars = filter::WordClue::make_word_chars(&force_guess);
         if !solver.all_guesses.contains(&guess_chars) {
-            return Err(format!("Hint guess {hint} is not in the guesses list"));
+            return Err(format!(
+                "Forced guess {force_guess} is not in the guesses list"
+            ));
         }
         let entropy = solver.calc_guess_entropy(guess_chars);
-        println!("Hinted guess: {hint} ({entropy:.4})");
+        println!("Forced guess: {force_guess} ({entropy:.4})");
     } else {
         let best_list = solver.find_best_guess(hard_mode, reverse, 10)?;
         print!("Best guesses: ");
@@ -124,7 +124,6 @@ fn print_help() -> Result<(), String> {
     println!("  -s, --solution-file FILE    solution file");
     println!("  -g, --guesses-file FILE     guesses file");
     println!("  -m, --simulate-game WORD    simulate a game");
-    println!("  -b, --hint-best WORD        seed the best-guess search");
     println!("  -f, --force-guess WORD      score a specific guess");
     println!("  -c, --calc-init-guess WORD  calculate initial-guess performance");
     println!("      --resume FILE           continue an existing performance output");
