@@ -108,9 +108,9 @@ fn run() -> Result<(), String> {
         let entropy = solver.calc_guess_entropy(guess_chars);
         println!("Hinted guess: {hint} ({entropy:.4})");
     } else {
-        let best_list = solver.find_best_guess(hard_mode, reverse)?;
+        let best_list = solver.find_best_guess(hard_mode, reverse, 10)?;
         print!("Best guesses: ");
-        for (guess_chars, entropy) in best_list.into_iter().take(10) {
+        for (guess_chars, entropy) in best_list {
             print!("{}({:.4}), ", to_string(&guess_chars), entropy);
         }
         println!();

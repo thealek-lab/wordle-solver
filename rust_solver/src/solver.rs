@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
 
-use crate::filter::{WORD_LENGTH, WordChars, WordClue};
+use crate::filter::{WordChars, WordClue};
 
 pub const DEFAULT_SOLUTIONS_FILE: &str = "./solutions.txt";
 pub const DEFAULT_GUESSES_FILE: &str = "./all_guesses_2022_11K.txt";
@@ -33,15 +33,12 @@ impl Solver {
         }
 
         let all_solutions = read_words(solution_file_name, true)?;
-        ensure_unique(&all_solutions, "solution", solution_file_name)?;
-        let all_solutions = sorted(all_solutions);
 
         let mut all_guesses = if guesses_file_name.is_empty() {
-            vec![]
+            HashSet::new()
         } else {
             read_words(guesses_file_name, false)?
         };
-        ensure_unique(&all_guesses, "guess", guesses_file_name)?;
         all_guesses.extend(all_solutions.iter().cloned());
 
         for solution in &all_solutions {
@@ -52,7 +49,6 @@ impl Solver {
             }
         }
 
-        let all_guesses = sorted(all_guesses);
         if verbosity >= 1 {
             println!("All Possible Solutions: {}", all_solutions.len());
             println!("All Possible Guesses: {}", all_guesses.len());
@@ -131,10 +127,15 @@ impl Solver {
         &self,
         hard_mode: bool,
         reverse: bool,
+        max_results: usize,
     ) -> Result<Vec<(WordChars, f64)>, String> {
         let num_sols = self.filtered_sols.len();
         if num_sols == 0 {
             return Err("No solutions left to guess from".to_owned());
+        }
+
+        if max_results == 0 {
+            return Ok(vec![]);
         }
 
         if num_sols == 1 {
@@ -153,31 +154,34 @@ impl Solver {
             guess_list = &reverse_list;
         }
 
-        let mut best_entropy = 0.0;
-        let mut best_guess = ['_'; WORD_LENGTH]; // dummy value
-        let mut best_in_sols = false;
-        for guess_chars in guess_list {
-            let entropy = self.calc_guess_entropy(*guess_chars);
+        let mut ranked_guesses = guess_list
+            .iter()
+            .enumerate()
+            .map(|(index, guess_chars)| {
+                (
+                    *guess_chars,
+                    self.calc_guess_entropy(*guess_chars),
+                    self.filtered_sols.binary_search(guess_chars).is_ok(),
+                    index,
+                )
+            })
+            .collect::<Vec<_>>();
 
-            if entropy > best_entropy {
-                best_entropy = entropy;
-                best_guess = *guess_chars;
-                best_in_sols = self.filtered_sols.binary_search(&best_guess).is_ok();
-            } else if entropy == best_entropy
-                && !best_in_sols
-                && self.filtered_sols.binary_search(guess_chars).is_ok()
-            {
-                best_entropy = entropy;
-                best_guess = *guess_chars;
-                best_in_sols = true;
-            }
-        }
+        ranked_guesses.sort_by(|left, right| {
+            right.1.total_cmp(&left.1)
+                .then_with(|| right.2.cmp(&left.2))
+                .then_with(|| left.3.cmp(&right.3))
+        });
 
-        Ok(vec![(best_guess, best_entropy)])
+        Ok(ranked_guesses
+            .into_iter()
+            .take(max_results)
+            .map(|(guess, entropy, _, _)| (guess, entropy))
+            .collect())
     }
 }
 
-fn read_words(file_name: &str, solution_file: bool) -> Result<Vec<String>, String> {
+fn read_words(file_name: &str, solution_file: bool) -> Result<HashSet<String>, String> {
     let contents = fs::read_to_string(file_name)
         .map_err(|error| format!("Could not read {file_name}: {error}"))?;
     let words = contents
@@ -191,7 +195,7 @@ fn read_words(file_name: &str, solution_file: bool) -> Result<Vec<String>, Strin
             };
             valid.then(|| fields[0].to_uppercase())
         })
-        .collect::<Vec<_>>();
+        .collect::<HashSet<_>>();
 
     for word in &words {
         if word.chars().count() != 5 {
@@ -202,16 +206,4 @@ fn read_words(file_name: &str, solution_file: bool) -> Result<Vec<String>, Strin
         }
     }
     Ok(words)
-}
-
-fn ensure_unique(words: &[String], kind: &str, file_name: &str) -> Result<(), String> {
-    if words.iter().collect::<HashSet<_>>().len() != words.len() {
-        return Err(format!("Duplicate {kind} in {file_name}"));
-    }
-    Ok(())
-}
-
-fn sorted(mut words: Vec<String>) -> Vec<String> {
-    words.sort();
-    words
 }

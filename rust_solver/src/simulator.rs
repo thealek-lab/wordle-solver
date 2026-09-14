@@ -58,7 +58,7 @@ impl GameSim {
             );
         }
         while !self.solver.is_empty() {
-            let ranked_guesses = self.solver.find_best_guess(false, false)?;
+            let ranked_guesses = self.solver.find_best_guess(false, false, 1)?;
             let (best_str, _entropy) = &ranked_guesses[0];
             self.solver
                 .filter_by_guess_n_solution(*best_str, self.solution)?;
