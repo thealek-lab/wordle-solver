@@ -154,7 +154,7 @@ impl Solver {
         }
 
         let mut best_entropy = 0.0;
-        let mut best_guess = ['a'; WORD_LENGTH]; // dummy value
+        let mut best_guess = ['_'; WORD_LENGTH]; // dummy value
         let mut best_in_sols = false;
         for guess_chars in guess_list {
             let entropy = self.calc_guess_entropy(*guess_chars);
@@ -162,10 +162,10 @@ impl Solver {
             if entropy > best_entropy {
                 best_entropy = entropy;
                 best_guess = *guess_chars;
-                best_in_sols = self.filtered_sols.contains(&best_guess);
+                best_in_sols = self.filtered_sols.binary_search(&best_guess).is_ok();
             } else if entropy == best_entropy
                 && !best_in_sols
-                && self.filtered_sols.contains(guess_chars)
+                && self.filtered_sols.binary_search(guess_chars).is_ok()
             {
                 best_entropy = entropy;
                 best_guess = *guess_chars;
