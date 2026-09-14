@@ -11,7 +11,7 @@ Results grouped by steps:
       5         206     6.42%
       6          16     0.50%
   Total        3209   100.00%
-  
+
 [100.00% after 32.53s done in 0.00s] avg=3.61=11576/3209
 
 ABACK, 3, SLATE(60), CHURN(1), ABACK(*)

@@ -124,13 +124,16 @@ impl Solver {
             return Ok(vec![(self.filtered_sols[0], 0.0)]);
         }
 
-        let guess_list = if hard_mode {
+        let mut guess_list = if hard_mode {
             &self.filtered_sols
         } else {
             &self.all_guesses
         };
+
+        let mut reverse_list: Vec<WordChars> = vec![];
         if reverse {
-            //TBD guess_list.reverse();
+            reverse_list.extend(guess_list.iter().rev());
+            guess_list = &reverse_list;
         }
 
         let mut best_entropy = 0.0;
