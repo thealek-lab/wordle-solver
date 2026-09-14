@@ -14,6 +14,7 @@ pub fn resolve_default_path(file_name: &str) -> String {
     }
 }
 
+#[derive(Clone)]
 pub struct GuessScore {
     pub entropy: f64,
     pub word_chars: WordChars,

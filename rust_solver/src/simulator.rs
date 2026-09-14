@@ -4,12 +4,12 @@ use std::io::Write;
 use std::time::Instant;
 
 use crate::filter::{WordChars, WordClue, to_string};
-use crate::solver::{DEFAULT_SOLUTIONS_FILE, Solver, resolve_default_path};
+use crate::solver::{DEFAULT_SOLUTIONS_FILE, GuessScore, Solver, resolve_default_path};
 
 pub const BEST_INITIAL_GUESS: &str = "SLATE";
 
 pub struct GameSim {
-    solution: WordChars,
+    solution: GuessScore,
     verbosity: u32,
     solver: Solver,
 }
@@ -35,13 +35,13 @@ impl GameSim {
         }
 
         Ok(Self {
-            solution,
+            solution: GuessScore::new(solution, 0.0, false),
             verbosity,
             solver,
         })
     }
 
-    pub fn run(&mut self, initial_guess_str: &str) -> Result<Vec<(WordChars, String)>, String> {
+    pub fn run(&mut self, initial_guess_str: &str) -> Result<Vec<(GuessScore, usize)>, String> {
         let start_time = Instant::now();
 
         let initial_guess = WordClue::make_word_chars(initial_guess_str);
@@ -49,8 +49,11 @@ impl GameSim {
         self.solver.filtered_sols = self.solver.all_solutions.clone();
 
         self.solver
-            .filter_by_guess_n_solution(initial_guess, self.solution)?;
-        let mut guesses = vec![(initial_guess, self.solver.len().to_string())];
+            .filter_by_guess_n_solution(initial_guess, self.solution.word_chars)?;
+        let mut guesses = vec![(
+            GuessScore::new(initial_guess, 0.0, false),
+            self.solver.len(),
+        )];
         if self.verbosity >= 1 {
             println!(
                 "After first guess {initial_guess_str} Solutions: {}",
@@ -61,8 +64,8 @@ impl GameSim {
             let ranked_guesses = self.solver.find_best_guess(false, false, 1)?;
             let score = &ranked_guesses[0];
             self.solver
-                .filter_by_guess_n_solution(score.word_chars, self.solution)?;
-            guesses.push((score.word_chars, self.solver.len().to_string()));
+                .filter_by_guess_n_solution(score.word_chars, self.solution.word_chars)?;
+            guesses.push((score.clone(), self.solver.len()));
             if self.verbosity >= 1 {
                 println!(
                     "After guess {} {} Solutions: {}",
@@ -84,8 +87,8 @@ impl GameSim {
             }
             if self.solver.len() == 1 {
                 let solution = self.solver.filtered_sols[0];
-                if guesses.last().unwrap().0 != solution {
-                    guesses.push((solution, "*".to_owned()));
+                if guesses.last().unwrap().0.word_chars != solution {
+                    guesses.push((GuessScore::new(solution, 100.0, true), 0));
                 }
                 break;
             }
@@ -96,20 +99,20 @@ impl GameSim {
         let elapsed = start_time.elapsed().as_secs_f64();
         if guesses
             .last()
-            .map(|guess| guess.0 == self.solution)
+            .map(|guess| guess.0.word_chars == self.solution.word_chars)
             .unwrap_or(false)
         {
             println!(
                 "Found solution {} in {} steps after {elapsed:.2}s!",
-                to_string(&self.solution),
+                self.solution.guess_str(),
                 guesses.len()
             );
             Ok(guesses)
         } else {
             Err(format!(
                 "Cannot find solution {}: best guess {}!",
-                to_string(&self.solution),
-                to_string(&guesses.last().unwrap().0)
+                self.solution.guess_str(),
+                guesses.last().unwrap().0.guess_str()
             ))
         }
     }
@@ -149,16 +152,20 @@ impl GameSim {
             if completed.contains(solution) {
                 continue;
             }
+
+            let solution = GuessScore::new(*solution, 0.0, false);
+            let sol_str = solution.guess_str();
+
             if self.verbosity >= 1 {
-                println!("Testing solution {}", to_string(solution));
+                println!("Testing solution {sol_str}");
             }
-            self.solution = *solution;
+            self.solution = solution;
 
             let result = self.run(initial_guess_str)?;
             total_steps += result.len();
-            let mut line = format!("{}, {}", to_string(solution), result.len());
+            let mut line = format!("{sol_str}, {}", result.len());
             for (guess, count) in result {
-                line.push_str(&format!(", {}({count})", to_string(&guess)));
+                line.push_str(&format!(", {}({count})", guess.guess_str()));
             }
             writeln!(output, "{line}")
                 .map_err(|error| format!("Could not write {file_name}: {error}"))?;
