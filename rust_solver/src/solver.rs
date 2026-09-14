@@ -14,6 +14,22 @@ pub fn resolve_default_path(file_name: &str) -> String {
     }
 }
 
+pub struct GuessScore {
+    pub entropy: f64,
+    pub word_chars: WordChars,
+    pub in_sols: bool,
+}
+
+impl GuessScore {
+    pub fn new(word_chars: WordChars, entropy: f64, in_sols: bool) -> Self {
+        Self {
+            word_chars,
+            entropy,
+            in_sols,
+        }
+    }
+}
+
 pub struct Solver {
     pub verbosity: u32,
     pub all_solutions: Vec<WordChars>,
@@ -142,14 +158,14 @@ impl Solver {
         hard_mode: bool,
         reverse: bool,
         max_num: usize,
-    ) -> Result<Vec<(WordChars, f64, bool)>, String> {
+    ) -> Result<Vec<GuessScore>, String> {
         let num_sols = self.filtered_sols.len();
         if num_sols == 0 {
             return Err("No solutions left to guess from".to_owned());
         }
 
         if num_sols == 1 {
-            return Ok(vec![(self.filtered_sols[0], 100.0, true)]);
+            return Ok(vec![GuessScore::new(self.filtered_sols[0], 100.0, true)]);
         }
 
         let mut guess_list = if hard_mode {
@@ -164,28 +180,36 @@ impl Solver {
             guess_list = &reverse_list;
         }
 
-        let mut best_list = vec![(['_'; WORD_LENGTH], 0.0, false)];
+        let mut best_list = vec![GuessScore::new(['_'; WORD_LENGTH], 0.0, false)];
         for guess_chars in guess_list {
             let entropy = self.calc_guess_entropy(*guess_chars);
 
             let list_len = best_list.len();
-            let worst_item = best_list[list_len - 1];
+            let worst_item = &best_list[list_len - 1];
 
-            if entropy > worst_item.1 {
-                best_list.push((
+            if entropy > worst_item.entropy {
+                best_list.push(GuessScore::new(
                     *guess_chars,
                     entropy,
                     self.filtered_sols.binary_search(guess_chars).is_ok(),
                 ));
 
-                best_list.sort_by(|a, b| b.1.total_cmp(&a.1).then_with(|| b.2.cmp(&a.2)));
+                best_list.sort_by(|a, b| {
+                    b.entropy
+                        .total_cmp(&a.entropy)
+                        .then_with(|| b.in_sols.cmp(&a.in_sols))
+                });
                 best_list.truncate(max_num);
-            } else if entropy == worst_item.1
-                && !worst_item.2
+            } else if entropy == worst_item.entropy
+                && !worst_item.in_sols
                 && self.filtered_sols.binary_search(guess_chars).is_ok()
             {
-                best_list.push((*guess_chars, entropy, true));
-                best_list.sort_by(|a, b| b.1.total_cmp(&a.1).then_with(|| b.2.cmp(&a.2)));
+                best_list.push(GuessScore::new(*guess_chars, entropy, true));
+                best_list.sort_by(|a, b| {
+                    b.entropy
+                        .total_cmp(&a.entropy)
+                        .then_with(|| b.in_sols.cmp(&a.in_sols))
+                });
                 best_list.truncate(max_num);
             }
         }

@@ -59,15 +59,15 @@ impl GameSim {
         }
         while !self.solver.is_empty() {
             let ranked_guesses = self.solver.find_best_guess(false, false, 1)?;
-            let (best_str, _entropy, _in_sols) = &ranked_guesses[0];
+            let score = &ranked_guesses[0];
             self.solver
-                .filter_by_guess_n_solution(*best_str, self.solution)?;
-            guesses.push((*best_str, self.solver.len().to_string()));
+                .filter_by_guess_n_solution(score.word_chars, self.solution)?;
+            guesses.push((score.word_chars, self.solver.len().to_string()));
             if self.verbosity >= 1 {
                 println!(
                     "After guess {} {} Solutions: {}",
                     guesses.len(),
-                    to_string(best_str),
+                    to_string(&score.word_chars),
                     self.solver.len()
                 );
             }

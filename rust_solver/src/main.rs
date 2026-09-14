@@ -111,12 +111,12 @@ fn run() -> Result<(), String> {
         let best_list = solver.find_best_guess(hard_mode, reverse, 10)?;
         print!("Best guesses: ");
         let mut score_str_list = vec![];
-        for (guess_chars, entropy, in_sols) in best_list.into_iter().take(10) {
-            let mut score_str = to_string(&guess_chars);
-            if in_sols {
+        for score in best_list.into_iter().take(10) {
+            let mut score_str = to_string(&score.word_chars);
+            if score.in_sols {
                 score_str += "+";
             }
-            score_str += &format!("({:.4})", entropy);
+            score_str += &format!("({:.4})", score.entropy);
             score_str_list.push(score_str);
         }
         println!("{}", score_str_list.join(", "));
