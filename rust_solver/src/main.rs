@@ -62,7 +62,7 @@ fn run() -> Result<(), String> {
         1
     };
     if let Some(solution) = calc_init {
-        let mut sim = GameSim::new(&solution, &guesses_file, verbosity)?;
+        let mut sim = GameSim::new(&guesses_file, verbosity)?;
         return sim.calculate_initial_guess_performance_from(&solution);
     }
     if let Some(solution) = simulate_game {

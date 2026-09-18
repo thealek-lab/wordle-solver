@@ -236,6 +236,7 @@ impl Solver {
     ) -> Result<Vec<(GuessScore, usize)>, String> {
         let start_time = Instant::now();
 
+        let solution_str = &solution_str.to_ascii_uppercase();
         let solution = WordClue::make_word_chars(solution_str);
         let sol_chars = solution;
 

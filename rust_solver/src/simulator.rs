@@ -8,37 +8,19 @@ use crate::solver::{DEFAULT_SOLUTIONS_FILE, GuessScore, Solver, resolve_default_
 pub const BEST_INITIAL_GUESS: &str = "SLATE";
 
 pub struct GameSim {
-    solution: GuessScore,
     verbosity: u32,
     solver: Solver,
 }
 
 impl GameSim {
-    pub fn new(solution: &str, guesses_file: &str, verbosity: u32) -> Result<Self, String> {
-        if verbosity >= 2 {
-            println!("Creating GameSim with hidden solution {solution}");
-        }
-
-        let solution = WordClue::make_word_chars(solution);
-        let solution = GuessScore::new(solution, 0.0, false);
-
+    pub fn new(guesses_file: &str, verbosity: u32) -> Result<Self, String> {
         let solver = Solver::new(
             &resolve_default_path(DEFAULT_SOLUTIONS_FILE),
             guesses_file,
             verbosity,
         )?;
-        if !solver.all_solutions.contains(&solution.word_chars) {
-            return Err(format!(
-                "Invalid solution {} is not in the official list!",
-                solution.guess_str()
-            ));
-        }
 
-        Ok(Self {
-            solution,
-            verbosity,
-            solver,
-        })
+        Ok(Self { verbosity, solver })
     }
 
     pub fn calculate_initial_guess_performance_from(
@@ -81,11 +63,8 @@ impl GameSim {
             if self.verbosity >= 1 {
                 println!("Testing solution {sol_str}");
             }
-            self.solution = solution;
 
-            let result =
-                self.solver
-                    .simulate(initial_guess_str, &self.solution.guess_str(), false)?;
+            let result = self.solver.simulate(initial_guess_str, &sol_str, false)?;
             total_steps += result.len();
             let mut line = format!("{sol_str}, {}", result.len());
             for (guess, count) in result {
@@ -151,6 +130,11 @@ fn read_completed_results(
 
         solution
     };
+
+    eprintln!(
+        "WARNING: Found last sol {} in resume file {file_name}: continuing from here!",
+        last_line[0]
+    );
 
     Ok((solution, total_steps, completed_count))
 }
