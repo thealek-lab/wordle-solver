@@ -1,5 +1,5 @@
-use std::fs;
 use std::path::Path;
+use std::{fs, time::Instant};
 
 use crate::filter::{WORD_LENGTH, WordChars, WordClue};
 
@@ -226,6 +226,87 @@ impl Solver {
         }
 
         Ok(best_list)
+    }
+
+    pub fn simulate(
+        &mut self,
+        initial_guess_str: &str,
+        solution_str: &str,
+        reverse: bool,
+    ) -> Result<Vec<(GuessScore, usize)>, String> {
+        let start_time = Instant::now();
+
+        let solution = WordClue::make_word_chars(solution_str);
+        let sol_chars = solution;
+
+        let initial_guess = WordClue::make_word_chars(initial_guess_str);
+
+        self.filtered_sols = self.all_solutions.clone();
+
+        self.filter_by_guess_n_solution(initial_guess, sol_chars)?;
+        let mut guesses = vec![(GuessScore::new(initial_guess, 0.0, false), self.len())];
+        if self.verbosity >= 1 {
+            println!(
+                "After first guess {initial_guess_str} Solutions: {}",
+                self.len()
+            );
+        }
+
+        while self.len() > 1 {
+            let ranked_guesses = self.find_best_guess(false, reverse, 1)?;
+            let score = &ranked_guesses[0];
+            self.filter_by_guess_n_solution(score.word_chars, sol_chars)?;
+
+            guesses.push((score.clone(), self.len()));
+            if self.verbosity >= 1 {
+                println!(
+                    "After guess {} {} Solutions: {}",
+                    guesses.len(),
+                    score.guess_str(),
+                    self.len()
+                );
+            }
+            if self.verbosity >= 2 && !self.is_empty() && self.len() <= 10 {
+                println!(
+                    "   {}",
+                    self.filtered_sols
+                        .iter()
+                        .map(|a| a.iter().collect::<String>())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                );
+            }
+            if self.len() == 1 {
+                if guesses.last().unwrap().0.word_chars != score.word_chars {
+                    guesses.push((GuessScore::new(score.word_chars, 100.0, true), 0));
+                }
+
+                break;
+            }
+            if guesses.len() >= 7 {
+                break;
+            }
+        }
+
+        let elapsed = start_time.elapsed().as_secs_f64();
+        let last_guess = guesses.last();
+        if let Some((best_guess, _)) = last_guess {
+            let solution = self.filtered_sols[0];
+            if best_guess.word_chars != solution {
+                guesses.push((GuessScore::new(solution, 100.0, true), 0));
+            }
+
+            println!(
+                "Found solution {solution_str} in {} steps after {elapsed:.2}s!",
+                guesses.len()
+            );
+            Ok(guesses)
+        } else {
+            Err(format!(
+                "Cannot find solution {solution_str}: best guess {}!",
+                last_guess.unwrap().0.guess_str()
+            ))
+        }
     }
 }
 

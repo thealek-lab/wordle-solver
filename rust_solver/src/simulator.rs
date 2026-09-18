@@ -41,92 +41,6 @@ impl GameSim {
         })
     }
 
-    pub fn run(
-        &mut self,
-        initial_guess_str: &str,
-        reverse: bool,
-    ) -> Result<Vec<(GuessScore, usize)>, String> {
-        let start_time = Instant::now();
-
-        let sol_chars = self.solution.word_chars;
-        let solution_str = self.solution.guess_str();
-
-        let initial_guess = WordClue::make_word_chars(initial_guess_str);
-
-        self.solver.filtered_sols = self.solver.all_solutions.clone();
-
-        self.solver
-            .filter_by_guess_n_solution(initial_guess, sol_chars)?;
-        let mut guesses = vec![(
-            GuessScore::new(initial_guess, 0.0, false),
-            self.solver.len(),
-        )];
-        if self.verbosity >= 1 {
-            println!(
-                "After first guess {initial_guess_str} Solutions: {}",
-                self.solver.len()
-            );
-        }
-
-        while self.solver.len() > 1 {
-            let ranked_guesses = self.solver.find_best_guess(false, reverse, 1)?;
-            let score = &ranked_guesses[0];
-            self.solver
-                .filter_by_guess_n_solution(score.word_chars, sol_chars)?;
-
-            guesses.push((score.clone(), self.solver.len()));
-            if self.verbosity >= 1 {
-                println!(
-                    "After guess {} {} Solutions: {}",
-                    guesses.len(),
-                    score.guess_str(),
-                    self.solver.len()
-                );
-            }
-            if self.verbosity >= 2 && !self.solver.is_empty() && self.solver.len() <= 10 {
-                println!(
-                    "   {}",
-                    self.solver
-                        .filtered_sols
-                        .iter()
-                        .map(|a| a.iter().collect::<String>())
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                );
-            }
-            if self.solver.len() == 1 {
-                if guesses.last().unwrap().0.word_chars != score.word_chars {
-                    guesses.push((GuessScore::new(score.word_chars, 100.0, true), 0));
-                }
-
-                break;
-            }
-            if guesses.len() >= 7 {
-                break;
-            }
-        }
-
-        let elapsed = start_time.elapsed().as_secs_f64();
-        let last_guess = guesses.last();
-        if let Some((best_guess, _)) = last_guess {
-            let solution = self.solver.filtered_sols[0];
-            if best_guess.word_chars != solution {
-                guesses.push((GuessScore::new(solution, 100.0, true), 0));
-            }
-
-            println!(
-                "Found solution {solution_str} in {} steps after {elapsed:.2}s!",
-                guesses.len()
-            );
-            Ok(guesses)
-        } else {
-            Err(format!(
-                "Cannot find solution {solution_str}: best guess {}!",
-                last_guess.unwrap().0.guess_str()
-            ))
-        }
-    }
-
     pub fn calculate_initial_guess_performance_from(
         &mut self,
         initial_guess_str: &str,
@@ -169,7 +83,9 @@ impl GameSim {
             }
             self.solution = solution;
 
-            let result = self.run(initial_guess_str, false)?;
+            let result =
+                self.solver
+                    .simulate(initial_guess_str, &self.solution.guess_str(), false)?;
             total_steps += result.len();
             let mut line = format!("{sol_str}, {}", result.len());
             for (guess, count) in result {

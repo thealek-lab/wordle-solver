@@ -66,10 +66,11 @@ fn run() -> Result<(), String> {
         return sim.calculate_initial_guess_performance_from(&solution);
     }
     if let Some(solution) = simulate_game {
-        let mut sim = GameSim::new(&solution, &guesses_file, verbosity)?;
-        return sim
-            .run(
+        let mut solver = Solver::new(&solutions_file, &guesses_file, verbosity)?;
+        return solver
+            .simulate(
                 force_guess.as_deref().unwrap_or(BEST_INITIAL_GUESS),
+                &solution,
                 reverse,
             )
             .map(|_| ());
