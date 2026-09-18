@@ -131,10 +131,12 @@ fn read_completed_results(
         solution
     };
 
-    eprintln!(
-        "WARNING: Found last sol {} in resume file {file_name}: continuing from here!",
-        last_line[0]
-    );
+    if !last_line.is_empty() {
+        eprintln!(
+            "WARNING: Found last sol {} in resume file {file_name}: continuing from here!",
+            last_line[0]
+        );
+    }
 
     Ok((solution, total_steps, completed_count))
 }
